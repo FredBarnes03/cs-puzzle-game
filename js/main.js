@@ -164,7 +164,9 @@ const ADVENTURE = {
   start: "room1",
   rooms: {
     room1: {
-      desc: `Your body dissolves into glowing particles.\nYou materialise inside a strange chamber.\nStreams of data pulse around you.\nA Platform of light forms beneath your feet.\nYour body stabilises inside the system.\n\nA pathway opens ahead into the core.\n\nPaths detected: NORTH.`,
+      // enterFirst: ""
+      // enterOther: ""
+      desc: `Your body dissolves into glowing particles.\nYou materialise inside a strange chamber.\nStreams of data pulse around you.\nA platform of light forms beneath your feet.\nYour body stabilises inside the system.\n\nA pathway opens ahead into the core.\n\nPaths detected: NORTH.`,
       exits: { 
         north: "core"
       },
@@ -173,9 +175,10 @@ const ADVENTURE = {
       desc: "> CORE SYSTEM\n\nYou step into the heart of the system.\nA firewall blocks your escape route.\nOther pathways branch into the network.\n\nPaths detected: WEST, NORTH, EAST, SOUTH",
       exits: {
         west: "room1", 
-        north: "loop",
+        north: "loopRoom",
         east: "logic",
-        south: "firewall"
+        south: "debug"
+        //door to firewall: "firewall",
       }
     },
     firewall: {
@@ -189,15 +192,29 @@ const ADVENTURE = {
       }
     },
     logic: {
-      desc: "",
+      desc: "> LOGIC NODE\n\nA circuit forms in front of you...",
       exits: {},
       puzzle: {
         success: "firewall"
       }
-    },    
+    },
+    loopRoom: {
+      desc: "",
+      exits: {
+        north: "loop",
+        east: "loop",
+        south: "loop",
+        west: "loop",
+      }
+    },   
     loop: {
-      desc: "You walk forward...\n\nThe system flickers...\n\nYou are back where you started.\n\nPaths: NORTH",
-      exits: { north: "loop" },
+      desc: "You walk forward..\n\nThe system flickers...\n\nYou are back where you started.\n\nPaths: NORTH, EAST, SOUTH, WEST",
+      exits: {
+        north: "loop",
+        east: "loop",
+        south: "loop",
+        west: "loop",
+      },
       puzzle: {
         answer: "break",
         success: "debug"
@@ -703,7 +720,7 @@ function Level4({ onComplete, onBack }) {
   const typingQueue = useRef(Promise.resolve());
 
   function addLine(text, type = "system") {
-    typingQueue = typingQueue.then(() => {
+    typingQueue.current = typingQueue.current.then(() => {
       return new Promise((resolve) => {
         const line = { text: "", type };
 
@@ -754,7 +771,7 @@ function Level4({ onComplete, onBack }) {
       });
     });
 
-    return typingQueue;
+    return typingQueue.current;
   }
 
   function generateLogicPuzzle() {
@@ -796,7 +813,7 @@ function Level4({ onComplete, onBack }) {
 
     // HELP
     if (raw === "help") {
-      addLine("Commands: go [direction], look, solve, help, ", "system");
+      addLine("Commands: go [direction], look, solve [code], help", "system");
     
     // LOOK
     } else if (raw === "look") {
@@ -827,25 +844,27 @@ function Level4({ onComplete, onBack }) {
           const newPuzzle = generateLogicPuzzle();
           setLogicPuzzle(newPuzzle);
 
-          const desc = `> LOGIC CIRCUIT DETECTED\n\n\
-            ${newPuzzle.a} ──┐\n\
-                ${newPuzzle.gate1} ──┐\n\
-            ${newPuzzle.b} ──┘     │\n\
-                      ${newPuzzle.gate2} ── ?\n\
-            ${newPuzzle.c} ─────────┘\n\n\
+          const desc = `> LOGIC CIRCUIT DETECTED
+
+          ${newPuzzle.a} ──┐
+              ${newPuzzle.gate1} ──┐
+          ${newPuzzle.b} ──┘     │
+                    ${newPuzzle.gate2} ── ?
+          ${newPuzzle.c} ─────────┘
+
           Type: solve [0 or 1]`;
 
           addLine(desc, "system");
 
         // LOOP ROOM
-        } else if (nextId === "loop") {
+        } else if (nextId === "loopRoom") {
           setLoopCount(c => c + 1);
 
           addLine(nextRoom.desc, "system");
 
           setTimeout(() => {
             setLoopCount(c => {
-              if (c >= 2) {
+              if (c >= 5) {
                 addLine("> WARNING: REPEATING STATE DETECTED", "error");
                 addLine("> POSSIBLE INFINITE LOOP", "error");
               }
@@ -870,7 +889,6 @@ function Level4({ onComplete, onBack }) {
     // SOLVE
     } else if (raw.startsWith("solve ")) {
       const answer = raw.replace("solve ", "").trim();
-      const currentRoom = ADVENTURE.rooms[room];
 
       // LOGIC ROOM SPECIAL HANDLING
       if (room === "logic" && logicPuzzle) {
@@ -965,7 +983,7 @@ function Level4({ onComplete, onBack }) {
       } else {
         addLine("Nothing to solve here.", "error");
       }
-    // UNKNOW COMMAND      
+    // UNKNOWN COMMAND      
     } else {
       addLine(`Unknown command: '${raw}'. Type 'help' for commands.`, "error");
       setScore(s => Math.max(0, s - 5));
