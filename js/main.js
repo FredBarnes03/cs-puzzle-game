@@ -164,9 +164,19 @@ const ADVENTURE = {
   start: "room1",
   rooms: {
     room1: {
-      // enterFirst: ""
-      // enterOther: ""
-      desc: `Your body dissolves into glowing particles.\nYou materialise inside a strange chamber.\nStreams of data pulse around you.\nA platform of light forms beneath your feet.\nYour body stabilises inside the system.\n\nA pathway opens ahead into the core.\n\nPaths detected: NORTH.`,
+      enterFirst: `> INITIALISING USER TRANSFER...
+Your body dissolves into glowing particles.
+You feel yourself being pulled apart... then reassembled.
+A platform of energy stabilises beneath your feet, holding your form together.
+
+> WARNING: CONSCIOUSNESS TRANSFER UNSTABLE
+> USER SUCCESSFULLY DIGITISED`,
+      enterOther: "You return to the digitising platform. The system hums quietly around you.",
+      desc: `Streams of data pulse through the walls like veins of light.
+This is where you entered the system.
+A single pathway leads deeper into the network.
+      
+Paths detected: NORTH.`,
       exits: { 
         north: "core"
       },
