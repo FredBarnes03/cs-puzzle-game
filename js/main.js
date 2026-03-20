@@ -172,6 +172,8 @@ const ADVENTURE = {
       },
     },
     core: {
+      // enterFirst: ""
+      // enterOther: ""
       desc: "> CORE SYSTEM\n\nYou step into the heart of the system.\nA firewall blocks your escape route.\nOther pathways branch into the network.\n\nPaths detected: WEST, NORTH, EAST, SOUTH",
       exits: {
         west: "room1", 
@@ -182,6 +184,8 @@ const ADVENTURE = {
       }
     },
     firewall: {
+      // enterFirst: ""
+      // enterOther: ""
       desc: "> FIREWALL ACTIVE\n\nA glowing barrier blocks your exit from the system.\n\nBinary access code required.\n\nConvert the collected binary sequence into decimal.\n\nType: solve [decimal]",
       exits: {
         west: "core"
@@ -192,6 +196,8 @@ const ADVENTURE = {
       }
     },
     logic: {
+      // enterFirst: ""
+      // enterOther: ""
       desc: "> LOGIC NODE\n\nA circuit forms in front of you...",
       exits: {},
       puzzle: {
@@ -199,6 +205,8 @@ const ADVENTURE = {
       }
     },
     loopRoom: {
+      // enterFirst: ""
+      // enterOther: ""
       desc: "",
       exits: {
         north: "loop",
@@ -208,6 +216,8 @@ const ADVENTURE = {
       }
     },   
     loop: {
+      // enterFirst: ""
+      // enterOther: ""
       desc: "You walk forward..\n\nThe system flickers...\n\nYou are back where you started.\n\nPaths: NORTH, EAST, SOUTH, WEST",
       exits: {
         north: "loop",
@@ -221,6 +231,8 @@ const ADVENTURE = {
       }
     },
     debug: {
+      // enterFirst: ""
+      // enterOther: ""
       desc: "> DEBUG TERMINAL\n\n> ERROR DETECTED\n\nCode snippet:\n\n total = num\n\nThe system is not accumulating values correctly.\n\nType: solve [code]",
       exits: {},
       puzzle: {
