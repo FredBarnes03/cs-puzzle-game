@@ -159,8 +159,16 @@ const DEBUG_PUZZLES = [
   },
 ];
 
-// ── LEVEL 4 – TEXT ADVENTURE ──────────────────
+// NOTE: enterFirst / enterOther not yet implemented in navigation logic
+// Will be handled in GO command logic later
 
+// ── LEVEL 4 – TEXT ADVENTURE ──────────────────
+// Each room contains:
+// enterFirst -> text shown first time entering
+// enterOther -> text shown on repeat visits
+// desc -> full descriptionshown when player types "look"
+// exits -> available directions
+// puzzle -> optional puzzle for the room
 const ADVENTURE = {
   start: "room1",
   rooms: {
@@ -212,6 +220,8 @@ Paths detected: NORTH, EAST, SOUTH, WEST, FIREWALL`,
         firewall: "firewall"
       }
     },
+
+    // TODO: Add multiple logic puzzles with increasing difficulty
     logic: {
       enterFirst: `> LOGIC NODE ACCESSED
 You step into a chamber filled with shifting data structures...
@@ -234,12 +244,12 @@ Type: solve [0 or 1]`,
     },  
     loopRoom: {
       enterFirst: `You step into a quiet section of the system.
-The date streams here feel slower.
+The data streams here feel slower.
 Paths branch in all directions.`,
 
       enterOther: "You return to the same quiet section. Something feels slightly off.",
       
-      desc: `The environment here appears stable, but something isnt quite right.
+      desc: `The environment here appears stable, but something isn't quite right.
 The same structures repeat around you, almost identically.
 
 Paths detected: NORTH, EAST, SOUTH, WEST`,
@@ -278,6 +288,8 @@ Paths detected: NORTH, EAST, SOUTH, WEST`,
         success: "core"
       }
     },
+
+    // TODO: Expand debug room to multiple sequential problems
     debug: {
       enterFirst: `> DEBUG NODE ACCESSED
 You enter a corrupted section of the system.
@@ -286,9 +298,9 @@ An unstable process is running here.`,
 
       enterOther: "You return to the debug node. The corrupted code reappears.",
 
-      desc: `A block of code stablises in front of you.
+      desc: `A block of code stabilises in front of you.
       
->ERROR DETECTED: INCORRECT ACCUMULATION
+> ERROR DETECTED: INCORRECT ACCUMULATION
 
 total = num
 
@@ -340,6 +352,9 @@ Convert your collected binary fragments into a decimal value.
   },
 };
 
+// Each puzzle room contributes a binary digit
+// These are collected and used to unlock the firewall
+// TODO: Prevent collecting multiple bits from the same room
 const ROOM_BITS = {
   loop: 1,
   debug: 0,
@@ -785,26 +800,41 @@ function Level3({ onComplete, onBack }) {
   );
 }
 
+// -- LEVEL 4 STATE
+// room -> current player location
+// displayedHistory -> what is currently shown on screen
+// history -> intial boot sequence
+// loopCount -> tracks how many times player loops (used for glitch effect)
+// logicPuzzle  -> stores current generated logic puzzle
+// binaryCode -> stores collected binary digits from puzzles
+
 // ── LEVEL 4 – TEXT ADVENTURE ──────────────────
 
 function Level4({ onComplete, onBack }) {
   const [room, setRoom] = useState("room1");
   const [displayedHistory, setDisplayedHistory] = useState([]);
+
+  // Initial boot sequence (used once on load)
   const [history, setHistory] = useState([
   { text: "> BOOTING SYSTEM...", type: "system" },
   { text: "> ESTABLISHING LINK...", type: "system" },
   { text: "> WARNING: USER DIGITISED", type: "error" },
-  { text: ADVENTURE.rooms["room1"].desc, type: "system" },
+  { text: ADVENTURE.rooms["room1"].enterFirst, type: "system" },
   { text: "Type: go [direction] / look / help", type: "system" },
   ]);
+
   const [input, setInput] = useState("");
   const [won, setWon] = useState(false);
   const [score, setScore] = useState(300);
   const historyRef = useRef(null);
   const inputRef = useRef(null);
   const [loopCount, setLoopCount] = useState(0);
-  const [logicPuzzle, setLogicPuzzle] = useState(null )
+  const [logicPuzzle, setLogicPuzzle] = useState(null);
   const [binaryCode, setBinaryCode] = useState([]);
+  const [visitedRooms, setVisitedRooms] = useState({});
+  const [completedRooms, setCompletedRooms] = useState({});
+  const CHAR_SPEED  = 35;
+  const LINE_DELAY = 600;
 
   useEffect(() => {
     if (historyRef.current) {
@@ -858,13 +888,13 @@ function Level4({ onComplete, onBack }) {
             });
 
             if (charIndex < currentLine.length) {
-              setTimeout(typeChar, 40);
+              setTimeout(typeChar, CHAR_SPEED);
             } else {
               // add newline after finishing line
               currentText += "\n";
               lineIndex++;
 
-              setTimeout(typeLine, 700); // ⏸ pause between lines
+              setTimeout(typeLine, LINE_DELAY); // ⏸ pause between lines
             }
           }
 
@@ -909,10 +939,27 @@ function Level4({ onComplete, onBack }) {
     }
   }
 
+function glitchText(text) {
+  return text
+    . split("")
+    .map(char => Math.random() < 0.1 ? "#" : char)
+    .join("");
+}
+
+  // TODO: Update navigation to use enterFirst / enterOther instead of always using desc
+
+  // ── COMMAND HANDLER ──────────────────
+  // Processes all player input:
+  // help -> show commands
+  // look -> show room descriptions
+  // go -> move between rooms
+  // solve -> attempt puzzles
+  // uknown -> error handling
   function handleCommand(cmd) {
     const raw = cmd.trim().toLowerCase();
     addLine(`> ${cmd}`, "player");
 
+    // NOTE: currentRoom refers to the room BEFORE movement
     const currentRoom = ADVENTURE.rooms[room];
 
     // HELP
@@ -923,9 +970,17 @@ function Level4({ onComplete, onBack }) {
     } else if (raw === "look") {
       addLine(currentRoom.desc, "system");
 
+    // TODO: Replace desc with enterFirst / enterOther
+    // Need to track visited rooms
+    // TODO: Prevent access to firewall until binary fragments collected
     // GO
     } else if (raw.startsWith("go ")) {
       const dir = raw.replace("go ", "").trim();
+
+      if (dir === "firewall" && binaryCode.length < 3) {
+        addLine("> ACCESS DENIED - INSUFFICIENT DATA", "error");
+        return
+      }
 
       if (currentRoom.exits[dir]) {
         const nextId = currentRoom.exits[dir];
@@ -944,6 +999,7 @@ function Level4({ onComplete, onBack }) {
           }
 
         // LOGIC ROOM
+        // NOTE: Logic room overrides normal room text with generated puzzle UI
         } else if (nextId === "logic") {
           const newPuzzle = generateLogicPuzzle();
           setLogicPuzzle(newPuzzle);
@@ -962,38 +1018,84 @@ function Level4({ onComplete, onBack }) {
 
         // LOOP ROOM
         } else if (nextId === "loopRoom") {
-          setLoopCount(c => c + 1);
+          const hasVisited = visitedRooms[nextId];
 
-          addLine(nextRoom.desc, "system");
+          const textToShow = hasVisited
+            ? nextRoom.enterOther
+            : nextRoom.enterFirst;
+          
+          addLine(textToShow, "system");
+
+          setVisitedRooms(prev => ({
+            ...prev,
+            [nextId]: true
+          }));
 
           setTimeout(() => {
-            setLoopCount(c => {
-              if (c >= 5) {
-                addLine("> WARNING: REPEATING STATE DETECTED", "error");
-                addLine("> POSSIBLE INFINITE LOOP", "error");
-              }
-              return c;
-            });
+            if (loopCount === 3) {
+              addLine(glitchText("> SIGNAL INSTABILITY DETECTED", "error"));
+            }
+
+            if (loopCount === 5) {
+              addLine("> DATA PATTERN REPEATING", "error");
+            }
+
+            if (loopCount === 7) {
+              addLine("> WARNING: RECURSIVE STATE CONFIRMED", "error");
+            }
+
+            if (loopCount === 9) {
+              addLine("> SYSTEM ERROR: INFINITE LOOP", "system");
+            }
           }, 300);
+            
 
         // DEFAULT ROOM
         } else {
-          addLine(nextRoom.desc, "system");
-          setLoopCount(0); // reset when leaving loop
+          const hasVisited = visitedRooms[nextId];
+
+          const textToShow = hasVisited
+            ? nextRoom.enterOther
+            : nextRoom.enterFirst;
+
+            addLine(textToShow, "system");
+
+            setVisitedRooms(prev => ({
+              ...prev,
+              [nextId]: true
+            }));
+
+            if (nextId === "loop") {
+              setLoopCount(c => c + 1);
+            } else {
+              setLoopCount(0);
+            }
         }
+
         if (nextRoom.win) {
           setWon(true);
-          addLine("🎉 You escaped! Well done!", "success");
         }
       } else {
         addLine(`You can't go ${dir} from here.`, "error");
         setScore(s => Math.max(0, s - 10));
       }
-    
-    // SOLVE
+      
+    // ── SOLVE COMMAND ──────────────────
+    // Handles all puzzle solving logic
+    // logic -> evaluates circuit puzzles
+    // debug -> fixes code issues
+    // loop -> breaks infinite loop
+    // firewall -> converts binary to decimal
+    // Also manages binary fragment collection system
     } else if (raw.startsWith("solve ")) {
+      if (completedRooms[room]) {
+        addLine("> This node has already been stabilised.", "system");
+        return;
+      }
+
       const answer = raw.replace("solve ", "").trim();
 
+      // Note: Logic room currently overrides room description with generated puzzle UI
       // LOGIC ROOM SPECIAL HANDLING
       if (room === "logic" && logicPuzzle) {
         if (answer === logicPuzzle.answer) {
@@ -1004,8 +1106,13 @@ function Level4({ onComplete, onBack }) {
 
           addLine("✅ Correct — circuit solved!", "success")
             .then(() => {
-              setBinaryCode(prev => [...prev, bit]);
-              return addLine(`> DATA FRAGMENT ACQUIRED: ${bit}`, "system");
+              setBinaryCode(prev => {
+                const updated = [...prev, bit];
+                addLine(`> DATA FRAGMENT ACQUIRED: ${bit}`, "system");
+                addLine("", "system"); // spacer
+                addLine(`> CURRENT CODE: ${updated.join("")}`, "system");
+                return updated;
+              })
             })
             .then(() => addLine("> PROCESSING...", "system"))
             .then(() => new Promise(r => setTimeout(r, 2000)))
@@ -1013,6 +1120,11 @@ function Level4({ onComplete, onBack }) {
               setDisplayedHistory([]);
               return addLine(nextRoom.desc, "system");
             });
+
+            setCompletedRooms(prev => ({
+              ...prev,
+              [room]: true
+            }));
 
         } else {
           addLine(`❌ Incorrect — evaluate ${logicPuzzle.gate1} then ${logicPuzzle.gate2}`, "error");
@@ -1023,11 +1135,57 @@ function Level4({ onComplete, onBack }) {
         return;
       }
 
+      // LOOP
+      if (room === "loop"){
+        if (answer === "break") {
+          const nextRoom = ADVENTURE.rooms[currentRoom.puzzle.success];
+          const bit = ROOM_BITS[room] ?? Math.round(Math.random());
+
+          setRoom(currentRoom.puzzle.success);
+
+          addLine("> ATTEMTPING MANUAL OVERRIDE...", "system")
+            .then(() => new Promise(r => setTimeout(r, 800)))
+            .then(() => addLine("> INTERRUPTING LOOP...", "error"))
+            .then(() => new Promise(r => setTimeout(r, 800)))
+            .then(() => addLine("> REALITIY DSYNCHRONISING...", "error"))
+            .then(() => new Promise(r => setTimeout(r, 1200)))
+            .then (() => {
+              setDisplayedHistory([]);
+              return addLine("> LOOP TERMINATED", "system");
+            })
+            .then(() => addLine("> RETURNING TO CORE...", "system"))
+            .then(() => new Promise(r => setTimeout(r, 800)))
+            .then(() => {
+              setBinaryCode(prev => {
+                const updated = [...prev, bit];
+
+                addLine(`> DATA FRAGMENT ACQUIRED: ${bit}`, "system");
+                addLine("", "system"); // spacer
+                addLine(`> CURRENT CODE: ${updated.join("")}`, "system");
+
+                return updated;
+              });
+            })
+            .then(() => new Promise(r => setTimeout(r, 800)))
+            .then(() => addLine(nextRoom.desc, "system"));
+          setCompletedRooms(prev => ({
+            ...prev,
+            [room]: true
+          }));
+        } else {
+          addLine("❌ That doesn't break the loop.", "error");
+          setScore(s => Math.max(0, s - 10));
+        }
+
+        return;
+      }
+
+      // FIREWALL
       if (room === "firewall") {
         const binaryString = binaryCode.join("");
 
-        if (binaryString.length === 0) {
-          addLine("❌ No data fragments collected.", "error");
+        if (binaryString.length < 3) {
+          addLine("❌ Not enough data fragments collected.", "error");
           return;
         }
 
@@ -1065,12 +1223,16 @@ function Level4({ onComplete, onBack }) {
           setRoom(currentRoom.puzzle.success);
 
           addLine("✅ SOLUTION ACCEPTED", "success")
-          .then(() => {
-            setBinaryCode(prev => [...prev, bit]);
-            return addLine(`> DATA FRAGMENT ACQUIRED: ${bit}`, "system");
-          })
-          .then(() => {
-            return addLine(`> CURRENT CODE: ${binaryCode.concat(bit).join("")}`, "system");
+          .then (() => {
+            setBinaryCode(prev => {
+              const updated = [...prev, bit];
+
+              addLine(`> DATA FRAGMENT ACQUIRED: ${bit}`, "system");
+              addLine("", "system"); // spacer
+              addLine(`> CURRENT CODE: ${updated.join("")}`, "system");
+
+              return updated;
+            })
           })
           .then(() => addLine("> PROCESSING...", "system"))
           .then(() => new Promise(r => setTimeout(r, 2000)))
@@ -1078,6 +1240,11 @@ function Level4({ onComplete, onBack }) {
             setDisplayedHistory([]);
             return addLine(nextRoom.desc, "system");
           });
+
+          setCompletedRooms(prev => ({
+              ...prev,
+              [room]: true
+            }));
           
 
         } else {
@@ -1093,6 +1260,8 @@ function Level4({ onComplete, onBack }) {
       setScore(s => Math.max(0, s - 5));
     }
   }
+  // End of command handler
+  // Controls full game flow and progression logic
 
   function onKeyDown(e) {
     if (e.key === "Enter" && input.trim()) {
