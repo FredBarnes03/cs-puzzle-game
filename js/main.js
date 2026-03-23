@@ -831,8 +831,10 @@ function Level4({ onComplete, onBack }) {
   const [loopCount, setLoopCount] = useState(0);
   const [logicPuzzle, setLogicPuzzle] = useState(null);
   const [binaryCode, setBinaryCode] = useState([]);
+  const [glitch, setGlitch] = useState(false);
   const [visitedRooms, setVisitedRooms] = useState({});
   const [completedRooms, setCompletedRooms] = useState({});
+  const [locked, setLocked] = useState(false);
   const CHAR_SPEED  = 35;
   const LINE_DELAY = 600;
 
@@ -908,6 +910,28 @@ function Level4({ onComplete, onBack }) {
     return typingQueue.current;
   }
 
+  function loadNewRoom(text) {
+    setDisplayedHistory([]);
+
+    addLine("> TRANSFERRING TO NEW NODE...", "system");
+
+    setTimeout(() => {
+      setDisplayedHistory([]);
+      addLine(text, "system");
+    }, 600);
+  }
+
+  function getRoomText(roomId) {
+    const roomData = ADVENTURE.rooms[roomId];
+    const hasVisited = visitedRooms[roomId];
+
+    return hasVisited
+      ? (roomData.enterOther || roomData.desc)
+      : (roomData.enterFirst || roomData.desc);
+  }
+
+
+
   function generateLogicPuzzle() {
     const gates = ["AND", "OR", "XOR", "NAND", "NOR"];
 
@@ -939,12 +963,24 @@ function Level4({ onComplete, onBack }) {
     }
   }
 
-function glitchText(text) {
-  return text
-    .split("")
-    .map(char => Math.random() < 0.1 ? "#" : char)
-    .join("");
-}
+  function glitchText(text, intensity = 0.1) {
+    const chars = "!@#$%^&*<>?/[]{}";
+    
+    return text
+      .split("")
+      .map(char => {
+        if (Math.random() < intensity) {
+          return chars[Math.floor(Math.random() * chars.length)];
+        }
+        return char;
+      })
+      .join("");
+  }
+
+  function triggerGlitch(duration = 200) {
+    setGlitch(true);
+    setTimeout(() => setGlitch(false), duration);
+  }
 
   // TODO: Update navigation to use enterFirst / enterOther instead of always using desc
 
@@ -956,6 +992,8 @@ function glitchText(text) {
   // solve -> attempt puzzles
   // uknown -> error handling
   function handleCommand(cmd) {
+    if (locked) return;
+
     const raw = cmd.trim().toLowerCase();
     addLine(`> ${cmd}`, "player");
 
@@ -991,11 +1029,17 @@ function glitchText(text) {
         // ROOM HANDLING
 
         // FIREWALL SPECIAL DISPLAY
-        if (nextId === "firewall") {
+        if (nextId === "firewall") {          
+          const textToShow = getRoomText(nextId);
+
+          loadNewRoom(textToShow);
+
+          setVisitedRooms(prev => ({
+            ...prev,
+            [nextId]: true
+          }));
+
           const code = binaryCode.join("");
-
-          addLine(nextRoom.desc, "system");
-
           if (code.length > 0) {
             addLine(`> COLLECTED BINARY: ${code}`, "system");
           }
@@ -1003,52 +1047,46 @@ function glitchText(text) {
         // LOGIC ROOM
         // NOTE: Logic room overrides normal room text with generated puzzle UI
         } else if (nextId === "logic") {
-          const newPuzzle = generateLogicPuzzle();
-          setLogicPuzzle(newPuzzle);
-
-          const desc = `> LOGIC CIRCUIT DETECTED
-
-          ${newPuzzle.a} ──┐
-              ${newPuzzle.gate1} ──┐
-          ${newPuzzle.b} ──┘     │
-                    ${newPuzzle.gate2} ── ?
-          ${newPuzzle.c} ─────────┘
-
-          Type: solve [0 or 1]`;
-
-          addLine(desc, "system");
-
-        // LOOP ROOM
-        } else if (nextId === "loopRoom") {
-          const hasVisited = visitedRooms[nextId];
-
-          const textToShow = hasVisited
-            ? nextRoom.enterOther
-            : nextRoom.enterFirst;
-          
-          addLine(textToShow, "system");
+          const textToShow = getRoomText(nextId);
+          loadNewRoom(textToShow);
 
           setVisitedRooms(prev => ({
             ...prev,
             [nextId]: true
           }));
 
-          
+          const newPuzzle = generateLogicPuzzle();
+          setLogicPuzzle(newPuzzle);
+
+          addLine(`            
+          ${newPuzzle.a} ──┐
+              ${newPuzzle.gate1} ──┐
+          ${newPuzzle.b} ──┘     │
+                    ${newPuzzle.gate2} ── ?
+          ${newPuzzle.c} ─────────┘
+
+          Type: solve [0 or 1]
+          `, "system");
+
+        // LOOP ROOM
+        } else if (nextId === "loopRoom") {
+          const textToShow = getRoomText(nextId);
+          loadNewRoom(textToShow);
+
+          setVisitedRooms(prev => ({
+            ...prev,
+            [nextId]: true
+          }));          
             
         // DEFAULT ROOM
         } else {
-          const hasVisited = visitedRooms[nextId];
+          const textToShow = getRoomText(nextId);
+          loadNewRoom(textToShow);
 
-          const textToShow = hasVisited
-            ? nextRoom.enterOther
-            : nextRoom.enterFirst;
-
-            addLine(textToShow, "system");
-
-            setVisitedRooms(prev => ({
-              ...prev,
-              [nextId]: true
-            }));
+          setVisitedRooms(prev => ({
+            ...prev,
+            [nextId]: true
+          }));
         }
 
         // LOOP TRACKING
@@ -1058,19 +1096,20 @@ function glitchText(text) {
 
               setTimeout(() => {
                 if (newCount === 3) {
-                  addLine(glitchText("> SIGNAL INSTABILITY DETECTED"), "error");
+                  addLine("> SIGNAL INSTABILITY DETECTED", "error");
                 }
                 if (newCount === 5) {
-                  addLine("> DATA PATTERN REPEATING", "error");
+                  addLine(glitchText("> DATA PATTERN REPEATING", 0.1), "error");
                 }
                 if (newCount === 6) {
                   addLine("> HINT: NOT ALL PATHS REQUIRE MOVEMENT", "system");
                 }
                 if (newCount === 7) { 
-                  addLine("> WARNING: RECURSIVE STATE CONFIRMED", "error");
+                  addLine(glitchText("> WARNING: RECURSIVE STATE CONFIRMED", 0.2), "error");
                 }
                 if (newCount === 9) {
-                  addLine("> SYSTEM ERROR: INFINITE LOOP", "error");
+                  triggerGlitch(300);
+                  addLine(glitchText("> SYSTEM ERROR: INFINITE LOOP", 0.35), "error");
                 }
               }, 300);              
               return newCount
@@ -1181,6 +1220,7 @@ function glitchText(text) {
             [room]: true
           }));
         } else {
+          triggerGlitch(300);
           addLine("❌ That doesn't break the loop.", "error");
           setScore(s => Math.max(0, s - 10));
         }
@@ -1193,6 +1233,7 @@ function glitchText(text) {
         const binaryString = binaryCode.join("");
 
         if (binaryString.length < 3) {
+          triggerGlitch(300);
           addLine("❌ Not enough data fragments collected.", "error");
           return;
         }
@@ -1256,6 +1297,7 @@ function glitchText(text) {
           
 
         } else {
+          triggerGlitch(300);
           addLine("❌ Incorrect solution. Try again.", "error");
           setScore(s => Math.max(0, s - 10));
         }
@@ -1324,6 +1366,7 @@ function glitchText(text) {
       <div className="adventure-input-row">
         <span className="adventure-prompt">$&gt;&nbsp;</span>
         <input
+          disabled={locked}
           ref={inputRef}
           className="adventure-input"
           value={input}
