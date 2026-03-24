@@ -169,9 +169,12 @@ const DEBUG_PUZZLES = [
 // desc -> full descriptionshown when player types "look"
 // exits -> available directions
 // puzzle -> optional puzzle for the room
+
+const binCode = ""
 const ADVENTURE = {
   start: "room1",
   rooms: {
+    // ROOM 1
     room1: {
       enterFirst: `> INITIALISING USER TRANSFER...
 Your body dissolves into glowing particles.
@@ -192,6 +195,7 @@ Paths detected: NORTH.`,
         north: "core"
       },
     },
+    // CORE
     core: {
       enterFirst: `> CORE SYSTEM ACCESSED
 You step into the heart of the system.
@@ -220,7 +224,7 @@ Paths detected: NORTH, EAST, SOUTH, WEST, FIREWALL`,
         firewall: "firewall"
       }
     },
-    
+    // LOGIC
     logic: {
       enterFirst: `> LOGIC NODE ACCESSED
 You step into a chamber filled with shifting data structures...
@@ -238,7 +242,9 @@ The system requires a final output value.
       puzzle: {
         success: "core"
       }
-    },  
+    },
+    
+    // LOOP ROOM
     loopRoom: {
       enterFirst: `You step into a quiet section of the system.
 The data streams here feel slower.
@@ -256,7 +262,9 @@ Paths detected: NORTH, EAST, SOUTH, WEST`,
         south: "loop",
         west: "loop",
       }
-    },   
+    },
+    
+    // LOOP
     loop: {
       enterFirst: `You walk forward.
 The system flickers briefly.
@@ -287,6 +295,7 @@ Paths detected: NORTH, EAST, SOUTH, WEST`,
     },
 
     // TODO: Expand debug room to multiple sequential problems
+    // DEBUG
     debug: {
       enterFirst: `> DEBUG NODE ACCESSED
 You enter a corrupted section of the system.
@@ -313,25 +322,32 @@ Type: solve [code]`,
         success: "core"
       }
     },
+
+    // FIREWALL
     firewall: {
       enterFirst: `> FIREWALL INTERFACE ACCESSED
 You approach the barrier blocking your escape.
 The system reacts immediately.
-A defensive protocol activates.`,
+
+> FINAL SECURITY LAYER DETECTED
+> AUTHENTICATION REQUIRED
+
+The firewall pulses violently, resisting access.`,
 
       enterOther: "You return to the firewall. The barrier pulses, awaiting input.",
 
-      desc: `A glowing firewall stretches across your path.
-Data surges through it, rejecting anything that attempts to pass.
+      desc: `A massive firewall blocks your exit.
+Streams of encrypted data surge across its surface.
 
 > ACCESS CONTROL: ENABLED
-
 > AUTHORISATION REQUIRED
 
-A console materialises in front of you, awaiting input.
-Convert your collected binary fragments into a decimal value.
+Your collected binary fragments must be converted into a decimal key.
 
-> ENTER ACCESS CODE`,
+> ENTER ACCESS CODE
+> CURRENT FRAGMENTS:
+
+Type: solve [decimal]`,
 
       exits: {
         west: "core"
@@ -340,7 +356,9 @@ Convert your collected binary fragments into a decimal value.
         type: "binary",
         success: "exit"
       }
-    },  
+    },
+    
+    // EXIT
     exit: {
       desc: "> SYSTEM RESTORED\n\nAll errors resolved.\n\nYou feel your body reforming...\n\n> EXITING DIGITAL WORLD...\n\n🎉 You escaped the system!",
       exits: {},
@@ -834,6 +852,8 @@ function Level4({ onComplete, onBack }) {
   const [visitedRooms, setVisitedRooms] = useState({});
   const [completedRooms, setCompletedRooms] = useState({});
   const [locked, setLocked] = useState(false);
+  const [debugStage, setDebugStage] = useState(1);
+  const [debugPuzzle, setDebugPuzzle] = useState(null);
   const CHAR_SPEED  = 35;
   const LINE_DELAY = 600;
 
@@ -1017,6 +1037,28 @@ function Level4({ onComplete, onBack }) {
     setTimeout(() => setGlitch(false), duration);
   }
 
+  function awardBits(count) {
+    const bits = Array.from({ length: count }, () => Math.round(Math.random()));
+
+    return addLine(`> DATA FRAGMENT${count > 1 ? "S" : ""} ACQUIRED: ${bits.join(" ")}`, "system")
+      .then(() => {
+        return new Promise(resolve => {
+          setBinaryCode(prev => {
+            const spaceLeft = 8 - prev.length;
+            const bitsToAdd = bits.slice(0, spaceLeft);
+
+            const updated = [...prev, ...bitsToAdd];
+
+            addLine("", "system");
+            addLine(`> CURRENT CODE: ${updated.join("")}`, "system");
+
+            resolve();
+            return updated;
+          });
+        });
+      });
+  }
+
   // ── COMMAND HANDLER ──────────────────
   // Processes all player input:
   // help -> show commands
@@ -1044,7 +1086,7 @@ function Level4({ onComplete, onBack }) {
       if (room === "logic" && logicPuzzle) {
 
         // ── BUILD DIAGRAM ──────────────────
-        if (logicPuzzle.stage === 1) {
+        if (logicPuzzle.stage === 1) {          
           diagram = `
     ${logicPuzzle.a} ──┐
         ${logicPuzzle.gate1} ─── ?
@@ -1058,7 +1100,7 @@ function Level4({ onComplete, onBack }) {
         ${logicPuzzle.gate1} ───┐
     ${logicPuzzle.b} ──┘      |
               ${logicPuzzle.gate2} ─── ?
-    ${logicPuzzle.c} ───────────┘
+    ${logicPuzzle.c} ─────────┘
     `;
         }
 
@@ -1269,37 +1311,62 @@ function Level4({ onComplete, onBack }) {
 
       const answer = raw.replace("solve ", "").trim();
 
-      // Note: Logic room currently overrides room description with generated puzzle UI
       // LOGIC ROOM SPECIAL HANDLING
+    
       if (room === "logic" && logicPuzzle) {
         if (answer === logicPuzzle.answer) {
-          // STAGE COMPLETE
-          if (logicStage < 3) {
-            addLine("✅ Correct — advancing to next stage...", "success");
 
-            const nextStage = logicStage + 1;
-            setLogicStage(nextStage);
+          addLine("✅ Correct", "success")
+            .then(() => awardBits(1))
 
-            const newPuzzle = generateLogicPuzzle(nextStage);
-            setLogicPuzzle(newPuzzle);
+            .then(() => {
+              // ADVANCE STAGE
+              if (logicStage < 3) {
+                const nextStage = logicStage + 1;
 
-            addLine(`> STAGE ${nextStage}/3`, "system");
-            return;              
-          }
+                setLogicStage(nextStage);
 
-          // FINAL STAGE COMPLETE
-          addLine("✅ All curcuits solved!", "success")
+                const newPuzzle = generateLogicPuzzle(nextStage);
+                setLogicPuzzle(newPuzzle);
+
+                return addLine(`> STAGE ${logicStage}/3 COMPLETE`, "system")
+                  .then(() => addLine(`> ADVANCING TO STAGE ${nextStage}/3`, "success"))
+                  .then(() => new Promise(r => setTimeout(r, 800)));
+              }
+
+              // FINAL STAGE COMPLETE
+              return addLine("✅ All circuits solved!", "success")
+                .then(() => {
+                  setCompletedRooms(prev => ({
+                    ...prev,
+                    [room]: true
+                  }));
+
+                  const nextRoomId = currentRoom.puzzle.success;
+                  setRoom(nextRoomId);
+
+                  return new Promise(r => setTimeout(r, 1200))
+                    .then(() => {
+                      const textToShow = getRoomText(nextRoomId);
+                      return loadNewRoom(textToShow);
+                    });
+                });
+            });
+                    
+          /*addLine("✅ All curcuits solved!", "success")
             .then(() => new Promise(r => setTimeout(r, 600)))
 
             .then(() => {
               const nextRoomId = currentRoom.puzzle.success;
-              const bit = ROOM_BITS[room] ?? Math.round(Math.random());
+              const bit = Math.round(Math.random());
 
               setRoom(nextRoomId);
 
-              return addLine(`> DATA FRAGMENT ACQUIRED: ${bit}`, "system")
+              return addLine(`> DATA FRAGMENT ACQUIRED [${binaryCode.length + 1}/8]: ${bit}`, "system")
                 .then(() => {
                   setBinaryCode(prev => {
+                    if (prev.length >= 8) return prev; // cap at 8 bits
+
                     const updated = [...prev, bit];
                     return updated;
                   })
@@ -1309,7 +1376,7 @@ function Level4({ onComplete, onBack }) {
             .then((bit) => new Promise(r => setTimeout(r, 400)))
 
             .then(() => {
-              const updatedCode = [...binaryCode, ROOM_BITS[room] ?? Math.round(Math.random())];
+              const updatedCode = [...binaryCode, ROOM_BITS[room] ?? Math.round(Math.random())];/////////////
               return addLine(`> CURRENT CODE: ${updatedCode.join("")}`, "system");
             })
 
@@ -1329,7 +1396,7 @@ function Level4({ onComplete, onBack }) {
               const textToShow = getRoomText(nextRoomId);
 
               return loadNewRoom(textToShow);
-            });
+            });*/
         } else {
           addLine("❌ Incorrect - try again.", "error");
           //addLine(`❌ Incorrect — evaluate ${logicPuzzle.gate1} then ${logicPuzzle.gate2}`, "error");
@@ -1344,7 +1411,7 @@ function Level4({ onComplete, onBack }) {
       if (room === "loop"){
         if (answer === "break") {
           const nextRoom = ADVENTURE.rooms[currentRoom.puzzle.success];
-          const bit = ROOM_BITS[room] ?? Math.round(Math.random());
+          const bit = Math.round(Math.random());
 
           setRoom(currentRoom.puzzle.success);
 
@@ -1362,9 +1429,10 @@ function Level4({ onComplete, onBack }) {
             .then(() => new Promise(r => setTimeout(r, 800)))
             .then(() => {
               setBinaryCode(prev => {
+                if (prev.length >= 8) return prev; // cap at 8bits
                 const updated = [...prev, bit];
 
-                addLine(`> DATA FRAGMENT ACQUIRED: ${bit}`, "system");
+                addLine(`> DATA FRAGMENT ACQUIRED [${binaryCode.length + 1}/8]: ${bit}`, "system");
                 addLine("", "system"); // spacer
                 addLine(`> CURRENT CODE: ${updated.join("")}`, "system");
 
@@ -1396,10 +1464,34 @@ function Level4({ onComplete, onBack }) {
           return;
         }
 
+        if (binaryString.length < 4) {
+          addLine("> INSUFFICIENT DATA FRAGMENTS", "error");
+          addLine("> MINIMUM 4 BITS REQUIRED", "system");
+          return;
+        }
+
         const correctDecimal = parseInt(binaryString, 2);
 
         if (answer === String(correctDecimal)) {
-          addLine("✅ ACCESS GRANTED — FIREWALL DISABLED", "success");
+          addLine("> AUTHENTICATION SUCCESSFUL", "success")
+            .then(() => addLine("> FIREWALL BREACH INITIATED...", "system"))
+            .then(() => triggerGlitch(1500))
+            .then(() => new Promise(r => setTimeout(r, 800)))
+
+            .then(() => {
+              setDisplayedHistory([]);
+              return addLine("> ACCESS GRANTED", "success");
+            })
+
+            .then(() => new Promise(r => setTimeout(r, 600)))
+
+            .then(() => {
+              const nextRoom = ADVENTURE.rooms[currentRoom.puzzle.success];
+              setRoom(currentRoom.puzzle.success);
+              return loadNewRoom(nextRoom.desc)
+            });
+
+          /*addLine("✅ ACCESS GRANTED — FIREWALL DISABLED", "success");
 
           const nextRoom = ADVENTURE.rooms[currentRoom.puzzle.success];
           setRoom(currentRoom.puzzle.success);
@@ -1411,7 +1503,7 @@ function Level4({ onComplete, onBack }) {
             .then(() => {
               setDisplayedHistory([]);
               return addLine(nextRoom.enterFirst, "system");
-            })
+            })*/
         } else {
           addLine(`❌ Incorrect. Hint: ${binaryString} (binary) → ? (decimal)`, "error");
           setScore(s => Math.max(0, s - 10));
@@ -1425,16 +1517,18 @@ function Level4({ onComplete, onBack }) {
         if (answer === currentRoom.puzzle.answer) {
           const nextRoom = ADVENTURE.rooms[currentRoom.puzzle.success];
 
-          const bit = ROOM_BITS[room] ?? Math.round(Math.random());
+          const bit = Math.round(Math.random());
 
           setRoom(currentRoom.puzzle.success);
 
           addLine("✅ SOLUTION ACCEPTED", "success")
           .then (() => {
             setBinaryCode(prev => {
+              if (prev.length >= 8) return prev; // cap at 8 bits
+
               const updated = [...prev, bit];
 
-              addLine(`> DATA FRAGMENT ACQUIRED: ${bit}`, "system");
+              addLine(`> DATA FRAGMENT ACQUIRED [${binaryCode.length + 1}/8]: ${bit}`, "system");
               addLine("", "system"); // spacer
               addLine(`> CURRENT CODE: ${updated.join("")}`, "system");
 
