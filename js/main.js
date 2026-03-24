@@ -829,6 +829,7 @@ function Level4({ onComplete, onBack }) {
   const [loopCount, setLoopCount] = useState(0);
   const [logicPuzzle, setLogicPuzzle] = useState(null);
   const [logicStage, setLogicStage] = useState(1);
+  const [logicScreen, setLogicScreen] = useState(false);
   const [binaryCode, setBinaryCode] = useState([]);
   const [glitch, setGlitch] = useState(false);
   const [visitedRooms, setVisitedRooms] = useState({});
@@ -924,21 +925,21 @@ function Level4({ onComplete, onBack }) {
     const roomData = ADVENTURE.rooms[roomId];
     const hasVisited = visitedRooms[roomId];
 
-    return hasVisited
-      ? (roomData.enterOther || roomData.desc)
-      : (roomData.enterFirst || roomData.desc);
+    if (!hasVisited) return roomData.enterFirst || roomData.desc;
+    return roomData.enterOther || roomData.desc;
   }
 
 
   // trial code to stop duplication
   /*function enterRoom(roomId) {
     const textToShow = getRoomText(nextId);
-    loadNewRoom(textToShow);
 
     setVisitedRooms(prev => ({
       ...prev,
       [nextId]: true
     }));
+
+    return loadNewRoom(textToShow);    
   }*/
 
   function generateLogicPuzzle(stage = 1) {
@@ -1007,8 +1008,6 @@ function Level4({ onComplete, onBack }) {
     setTimeout(() => setGlitch(false), duration);
   }
 
-  // TODO: Update navigation to use enterFirst / enterOther instead of always using desc
-
   // ── COMMAND HANDLER ──────────────────
   // Processes all player input:
   // help -> show commands
@@ -1032,45 +1031,59 @@ function Level4({ onComplete, onBack }) {
     // LOOK
     } else if (raw === "look") {
       let diagram = "";
-      if (room === "logic" && logicPuzzle && logicPuzzle.stage > 1) {
-        if (logicPuzzle.stage === 2) {
-                diagram = `
-      ${logicPuzzle.a} ──┐
-          ${logicPuzzle.gate1} ───┐
-      ${logicPuzzle.b} ──┘      |
-                  ${logicPuzzle.gate2} ─── ?
-      ${logicPuzzle.c} ───────────┘
-      `;
-        }
-        if (logicPuzzle.stage === 3) {
-                diagram = `
-      ${logicPuzzle.a} ──┐
-          ${logicPuzzle.gate1} ───┐
-      ${logicPuzzle.b} ──┘      |
-                  ${logicPuzzle.gate3} ─── ?
-      ${logicPuzzle.c} ──┐      |
-          ${logicPuzzle.gate2} ───┘
-      ${logicPuzzle.d} ──┘
-      `;
-        }
-        return addLine(diagram + "\nType: solve [0 or 1]", "system");
-        
-      } else {
-        addLine(currentRoom.desc, "system")
-          .then(() => {
-            if (room === "logic" && logicPuzzle) {
-              if (logicPuzzle.stage === 1) {
-                diagram = `
-      ${logicPuzzle.a} ──┐
-          ${logicPuzzle.gate1} ─── ?
-      ${logicPuzzle.b} ──┘
-      `;
-              }           
 
-            return addLine(diagram + "\nType: solve [0 or 1]", "system");
-            }
-          });
-      }     
+      if (room === "logic" && logicPuzzle) {
+
+        // ── BUILD DIAGRAM ──────────────────
+        if (logicPuzzle.stage === 1) {
+          diagram = `
+    ${logicPuzzle.a} ──┐
+        ${logicPuzzle.gate1} ─── ?
+    ${logicPuzzle.b} ──┘
+    `;
+        }
+
+        if (logicPuzzle.stage === 2) {
+          diagram = `
+    ${logicPuzzle.a} ──┐
+        ${logicPuzzle.gate1} ───┐
+    ${logicPuzzle.b} ──┘      |
+              ${logicPuzzle.gate2} ─── ?
+    ${logicPuzzle.c} ───────────┘
+    `;
+        }
+
+        if (logicPuzzle.stage === 3) {
+          diagram = `
+    ${logicPuzzle.a} ──┐
+        ${logicPuzzle.gate1} ───┐
+    ${logicPuzzle.b} ──┘      |
+              ${logicPuzzle.gate3} ─── ?
+    ${logicPuzzle.c} ──┐      |
+        ${logicPuzzle.gate2} ───┘
+    ${logicPuzzle.d} ──┘
+    `;
+        }
+
+        // ── STAGE 1: SHOW DESC + PUZZLE ──────────────────
+        if (logicPuzzle.stage === 1) {
+          return addLine(currentRoom.desc, "system")
+            .then(() => addLine(`> LOGIC STAGE 1/3`, "system"))
+            .then(() => addLine(diagram, "system"))
+            .then(() => addLine("Type: solve [0 or 1]", "system"));
+        }
+
+        // ── STAGE 2/3: PUZZLE ONLY ──────────────────
+        return addLine("", "system")
+          .then(() => addLine("> RECONFIGURING CIRCUIT...", "system"))
+          .then(() => new Promise(r => setTimeout(r, 1000)))
+          .then(() => addLine(`> LOGIC STAGE ${logicPuzzle.stage}/3`, "system"))
+          .then(() => addLine(diagram, "system"))
+          .then(() => addLine("Type: solve [0 or 1]", "system"));
+      }
+
+      // ── NORMAL ROOMS ──────────────────
+      return addLine(currentRoom.desc, "system");   
 
     // GO
     } else if (raw.startsWith("go ")) {
@@ -1093,12 +1106,12 @@ function Level4({ onComplete, onBack }) {
         if (nextId === "firewall") {          
           const textToShow = getRoomText(nextId);
 
-          loadNewRoom(textToShow);
-
           setVisitedRooms(prev => ({
             ...prev,
             [nextId]: true
           }));
+
+          loadNewRoom(textToShow);          
 
           const code = binaryCode.join("");
           if (code.length > 0) {
@@ -1116,29 +1129,39 @@ function Level4({ onComplete, onBack }) {
               }));
 
               // generate puzzle BUT DO NOT SHOW
-              const newPuzzle = generateLogicPuzzle();
-              setLogicPuzzle(newPuzzle);
+              if (!completedRooms["logic"]) {
+                const newPuzzle = generateLogicPuzzle();
+                setLogicPuzzle(newPuzzle);
+                setLogicStage(1);
+              }
+              
             });          
 
         // LOOP ROOM
         } else if (nextId === "loopRoom") {
           const textToShow = getRoomText(nextId);
-          loadNewRoom(textToShow);
 
           setVisitedRooms(prev => ({
             ...prev,
             [nextId]: true
-          }));          
+          })); 
+
+          loadNewRoom(textToShow);
+
+                   
             
         // DEFAULT ROOM
         } else {
           const textToShow = getRoomText(nextId);
-          loadNewRoom(textToShow);
 
           setVisitedRooms(prev => ({
             ...prev,
             [nextId]: true
           }));
+
+          loadNewRoom(textToShow);
+
+          
         }
 
         // LOOP TRACKING
@@ -1214,60 +1237,48 @@ function Level4({ onComplete, onBack }) {
           }
 
           // FINAL STAGE COMPLETE
-          addLine("✅ All curcuits solved!", "success");
+          addLine("✅ All curcuits solved!", "success")
+            .then(() => new Promise(r => setTimeout(r, 600)))
 
-          const nextRoom = ADVENTURE.rooms[currentRoom.puzzle.success];
-          const bit = ROOM_BITS[room] ?? Math.round(Math.random());
-
-          setRoom(currentRoom.puzzle.success);
-
-          setBinaryCode(prev => {
-            const updated = [...prev, bit];
-            addLine(`> DATA FRAGMENT ACQUIRED: ${bit}`, "systems");
-            addLine("", "system"); // spacer
-            addLine(`> CURRENT CODE: ${updated.join("")}`, "systems");
-            return updated;
-          });
-
-          setCompletedRooms( prev => ({
-            ...prev,
-            [room]: true
-          }));
-
-          setTimeout(() => {
-            setDisplayedHistory([]);
-            const textToShow = getRoomText(nextId);
-            loadNewRoom(textToShow);;
-          }, 2000);
-
-
-          /*const nextRoom = ADVENTURE.rooms[currentRoom.puzzle.success];
-          const bit = ROOM_BITS[room] ?? Math.round(Math.random());
-
-          setRoom(currentRoom.puzzle.success);
-
-          addLine("✅ Correct — circuit solved!", "success")
             .then(() => {
-              setBinaryCode(prev => {
-                const updated = [...prev, bit];
-                addLine(`> DATA FRAGMENT ACQUIRED: ${bit}`, "system");
-                addLine("", "system"); // spacer
-                addLine(`> CURRENT CODE: ${updated.join("")}`, "system");
-                return updated;
-              })
-            })*/
-            /*.then(() => addLine("> PROCESSING...", "system")) Not sure if i need this bit
-            .then(() => new Promise(r => setTimeout(r, 2000)))
+              const nextRoomId = currentRoom.puzzle.success;
+              const bit = ROOM_BITS[room] ?? Math.round(Math.random());
+
+              setRoom(nextRoomId);
+
+              return addLine(`> DATA FRAGMENT ACQUIRED: ${bit}`, "system ")
+                .then(() => {
+                  setBinaryCode(prev => {
+                    const updated = [...prev, bit];
+                    return updated;
+                  })
+                  return bit;
+                });
+            })
+            .then((bit) => new Promise(r => setTimeout(r, 400)))
+
             .then(() => {
-              setDisplayedHistory([]);
-              return addLine(nextRoom.desc, "system");
+              const updatedCode = [...binaryCode, ROOM_BITS[room] ?? Math.round(Math.random())];
+              return addLine(`> CURRENT CODE: ${updatedCode.join("")}`, "system");
+            })
+
+            .then(() => new Promise(r => setTimeout(r, 800)))
+
+            .then(() => {
+              setCompletedRooms(prev => ({
+                ...prev,
+                [room]: true
+              }));
+            })
+
+            .then(() => new Promise(r => setTimeout(r, 600)))
+
+            .then(() => {
+              const nextRoomId = currentRoom.puzzle.success;
+              const textToShow = getRoomText(nextRoomId);
+
+              return loadNewRoom(textToShow);
             });
-
-            setCompletedRooms(prev => ({
-              ...prev,
-              [room]: true
-            }));*/
-
         } else {
           addLine("❌ Incorrect - try again.", "error");
           //addLine(`❌ Incorrect — evaluate ${logicPuzzle.gate1} then ${logicPuzzle.gate2}`, "error");
