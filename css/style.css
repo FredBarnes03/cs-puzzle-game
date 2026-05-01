@@ -263,12 +263,7 @@ body::before {
 }
 
 .code-block::before {
-  content: '●  ●  ●';
-  position: absolute;
-  top: 10px; left: 16px;
-  font-size: 0.6rem;
-  color: var(--text-dim);
-  letter-spacing: 4px;
+  content: "";
 }
 
 .code-line { padding-top: 12px; }

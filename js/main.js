@@ -141,6 +141,8 @@ const LEVELS = [
 // ── LEVEL 1 – IF/ELSE QUESTIONS ───────────────
 const IF_ELSE_QUESTIONS = [
   {
+    context:
+      "🗳️ You're building a voting app. The user entered their age - check if they're old enough to vote.",
     code: [
       { text: "age = 16", type: "normal" },
       { text: "", type: "blank-line" },
@@ -156,6 +158,8 @@ const IF_ELSE_QUESTIONS = [
       "age >= 18 means 18 OR older. Since age = 16, it goes to the else branch. The >= operator means 'greater than or equal to'.",
   },
   {
+    context:
+      "📝 A student just finished their exam. They need 50 or more to pass - write the condition!",
     code: [
       { text: "score = 72", type: "normal" },
       { text: "", type: "blank-line" },
@@ -171,6 +175,8 @@ const IF_ELSE_QUESTIONS = [
       "score >= 50 means the student passed if they got 50 or more. score = 72, so this prints 'You passed!'",
   },
   {
+    context:
+      "💡 You're coding a smart home app. Check if the lights are on to decide what to display.",
     code: [
       { text: "lights_on = False", type: "normal" },
       { text: "", type: "blank-line" },
@@ -189,6 +195,91 @@ const IF_ELSE_QUESTIONS = [
     correctAnswers: ["lights_on == True", "lights_on"],
     explanation:
       "lights_on is False, so the condition fails and we get 'It is dark!'. Both 'lights_on == True' and 'lights_on' are valid ways to check a boolean!",
+  },
+  {
+    context:
+      "🌡️ A weather app needs to warn users when it's too hot. Set the threshold at 30 degrees.",
+    code: [
+      { text: "temperature = 35", type: "normal" },
+      { text: "", type: "blank-line" },
+      { text: "if _____ :", type: "has-blank", blankIdx: 0 },
+      { text: '  print("It is hot outside!")', type: "normal" },
+      { text: "else:", type: "normal" },
+      { text: '  print("Nice weather.")', type: "normal" },
+    ],
+    blanks: [""],
+    options: [
+      "temperature > 30",
+      "temperature < 30",
+      "temperature == 35",
+      "temperature > 100",
+    ],
+    correctAnswers: ["temperature > 30"],
+    explanation:
+      "temperature = 35, so temperature > 30 is True and prints 'It is hot outside!'. The > operator means strictly greater than.",
+  },
+  {
+    context:
+      "🔐 You're building a login system. Compare what the user typed with the real password.",
+    code: [
+      { text: "password = 'abc123'", type: "normal" },
+      { text: "user_input = 'abc123'", type: "normal" },
+      { text: "", type: "blank-line" },
+      { text: "if _____ :", type: "has-blank", blankIdx: 0 },
+      { text: '  print("Access granted!")', type: "normal" },
+      { text: "else:", type: "normal" },
+      { text: '  print("Wrong password.")', type: "normal" },
+    ],
+    blanks: [""],
+    options: [
+      "user_input == password",
+      "user_input > password",
+      "user_input = password",
+      "user_input != password",
+    ],
+    correctAnswers: ["user_input == password"],
+    explanation:
+      "We use == to compare two values. user_input = password would be assignment (a bug!), and != means 'not equal'.",
+  },
+  {
+    context:
+      "🎮 You're coding a game. When the player runs out of lives it's game over - check for it!",
+    code: [
+      { text: "lives = 0", type: "normal" },
+      { text: "", type: "blank-line" },
+      { text: "if _____ :", type: "has-blank", blankIdx: 0 },
+      { text: '  print("Game over!")', type: "normal" },
+      { text: "else:", type: "normal" },
+      { text: '  print("Keep playing!")', type: "normal" },
+    ],
+    blanks: [""],
+    options: ["lives == 0", "lives > 0", "lives >= 1", "lives != 0"],
+    correctAnswers: ["lives == 0"],
+    explanation:
+      "lives = 0, so we check lives == 0 which is True — prints 'Game over!'. lives > 0 and lives >= 1 would be False here.",
+  },
+  {
+    context:
+      "🌧️ A weather app needs to warn you if you'll get wet. You need an umbrella when it rains!",
+    code: [
+      { text: "is_raining = True", type: "normal" },
+      { text: "has_umbrella = False", type: "normal" },
+      { text: "", type: "blank-line" },
+      { text: "if _____ :", type: "has-blank", blankIdx: 0 },
+      { text: '  print("You will get wet!")', type: "normal" },
+      { text: "else:", type: "normal" },
+      { text: '  print("You are fine!")', type: "normal" },
+    ],
+    blanks: [""],
+    options: [
+      "is_raining and not has_umbrella",
+      "is_raining or has_umbrella",
+      "not is_raining",
+      "has_umbrella == True",
+    ],
+    correctAnswers: ["is_raining and not has_umbrella"],
+    explanation:
+      "We need BOTH conditions: it's raining AND you don't have an umbrella. 'and' checks both, 'not' flips False to True. This introduces combining conditions!",
   },
 ];
 
@@ -261,7 +352,7 @@ const DEBUG_PUZZLES = [
       { code: "total = 0", bug: false },
       { code: "for num in numbers:", bug: false },
       {
-        code: "    total = num          # ← this line replaces instead of adds!",
+        code: "    total = num          # ← this line replaces instead of adds!", //little hint at the begining
         bug: true,
       },
       { code: "print('Sum:', total)", bug: false },
@@ -576,7 +667,12 @@ function AchievementToast({ achievement, onDone }) {
 }
 
 // ── HOME SCREEN ───────────────────────────────
-function HomeScreen({ completedLevels, scores, onSelectLevel, unlockedAchievements }) {
+function HomeScreen({
+  completedLevels,
+  scores,
+  onSelectLevel,
+  unlockedAchievements,
+}) {
   return (
     <div className="screen">
       <div style={{ marginBottom: 8 }}>
@@ -646,18 +742,39 @@ function HomeScreen({ completedLevels, scores, onSelectLevel, unlockedAchievemen
       {/* ── ACHIEVEMENTS ── */}
       {unlockedAchievements.length > 0 && (
         <div style={{ marginTop: 32 }}>
-          <div style={{ fontSize: "0.7rem", color: "var(--text-dim)", letterSpacing: 2, marginBottom: 12, textAlign: "center" }}>
+          <div
+            style={{
+              fontSize: "0.7rem",
+              color: "var(--text-dim)",
+              letterSpacing: 2,
+              marginBottom: 12,
+              textAlign: "center",
+            }}
+          >
             YOUR ACHIEVEMENTS
           </div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
-            {ACHIEVEMENTS.map(a => (
-              <div key={a.id} title={a.desc} style={{
-                fontSize: "1.6rem",
-                opacity: unlockedAchievements.includes(a.id) ? 1 : 0.2,
-                filter: unlockedAchievements.includes(a.id) ? "none" : "grayscale(1)",
-                cursor: "default",
-                transition: "all 0.3s"
-              }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexWrap: "wrap",
+              justifyContent: "center",
+            }}
+          >
+            {ACHIEVEMENTS.map((a) => (
+              <div
+                key={a.id}
+                title={a.desc}
+                style={{
+                  fontSize: "1.6rem",
+                  opacity: unlockedAchievements.includes(a.id) ? 1 : 0.2,
+                  filter: unlockedAchievements.includes(a.id)
+                    ? "none"
+                    : "grayscale(1)",
+                  cursor: "default",
+                  transition: "all 0.3s",
+                }}
+              >
                 {a.icon}
               </div>
             ))}
@@ -771,6 +888,18 @@ function Level1({ onComplete, onBack, onAchievement }) {
 
       <div className="code-block">
         <div style={{ height: 20 }} />
+        <div
+          style={{
+            fontSize: "0.95rem",
+            color: "var(--text-dim)",
+            marginBottom: 16,
+            paddingBottom: 12,
+            borderBottom: "1px solid rgba(255,255,255,0.07)",
+            lineHeight: 1.5,
+          }}
+        >
+          {q.context}
+        </div>
         {q.code.map((line, i) => {
           if (line.type === "blank-line")
             return <div key={i} style={{ height: 4 }} />;
@@ -858,13 +987,13 @@ function Level2({ onComplete, onBack }) {
   const output = computeGate(selectedGate, p.a, p.b);
   const isCorrect = output === p.target;
 
- function check() {
-  if (answered) return;
-  playSound(isCorrect ? "correct" : "wrong"); 
-  setAnswered(true);
-  if (isCorrect) setScore(s => s + 100);
-  else setMistakes(m => m + 1);
-}
+  function check() {
+    if (answered) return;
+    playSound(isCorrect ? "correct" : "wrong");
+    setAnswered(true);
+    if (isCorrect) setScore((s) => s + 100);
+    else setMistakes((m) => m + 1);
+  }
 
   function next() {
     if (pIdx + 1 >= GATE_PUZZLES.length) {
@@ -1083,13 +1212,12 @@ function Level3({ onComplete, onBack }) {
   }
 
   function check() {
-  if (selected === null || answered) return;
-  playSound(isCorrect ? "correct" : "wrong"); 
-  setAnswered(true);
-  if (isCorrect) setScore(s => s + 150);
-  else setMistakes(m => m + 1);
-}
-
+    if (selected === null || answered) return;
+    playSound(isCorrect ? "correct" : "wrong");
+    setAnswered(true);
+    if (isCorrect) setScore((s) => s + 150);
+    else setMistakes((m) => m + 1);
+  }
 
   function next() {
     if (pIdx + 1 >= DEBUG_PUZZLES.length) {
@@ -1183,11 +1311,11 @@ function Level3({ onComplete, onBack }) {
                   __html: line.code
                     .replace(
                       /(for|in|if|else|print|range|def|return|True|False|and|or|not)/g,
-                      '<span class="kw">$1</span>',
+                      "<span class='kw'>$1</span>",
                     )
-                    .replace(/(".*?")/g, '<span class="str">$1</span>')
-                    .replace(/(#.*$)/g, '<span class="comment">$1</span>')
-                    .replace(/(\d+)/g, '<span class="num">$1</span>'),
+                    .replace(/(".*?")/g, "<span class='str'>$1</span>")
+                    .replace(/(#.*$)/g, "<span class='comment'>$1</span>")
+                    .replace(/(\d+)/g, "<span class='num'>$1</span>"),
                 }}
               />
               {selected === i && !answered && (
