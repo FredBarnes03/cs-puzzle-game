@@ -1270,8 +1270,12 @@ function Level4({ onComplete, onBack }) {
   const [locked, setLocked] = useState(false);
   const [debugStage, setDebugStage] = useState(1);
   const [debugPuzzle, setDebugPuzzle] = useState(null);
-  const CHAR_SPEED = 18;
-  const LINE_DELAY = 300;
+  //const CHAR_SPEED = 35;
+  //const LINE_DELAY = 700;
+  const FAST_MODE = true; // for testing true = instant text, false = typewriter effect
+  const CHAR_SPEED = FAST_MODE ? 0 : 35;
+  const LINE_DELAY = FAST_MODE ? 0 : 700;
+  const delay = (ms) => FAST_MODE ? ms * 0.6 : ms; // speed up all timeouts in fast mode
 
   useEffect(() => {
     if (historyRef.current) {
@@ -1360,7 +1364,7 @@ function Level4({ onComplete, onBack }) {
     setDisplayedHistory([]);
 
     return addLine("> TRANSFERRING TO NEW NODE...", "system")
-      .then(() => new Promise(r => setTimeout(r, 800)))
+      .then(() => new Promise(r => setTimeout(r, delay(800))))
       .then(() => {
         setDisplayedHistory([]);
         return addLine(text, "system");
@@ -1375,7 +1379,7 @@ function Level4({ onComplete, onBack }) {
     return roomData.enterOther || roomData.desc;
   }
 
-  function completeRoom(roomId, delay, latestCode = binaryCode) {
+  function completeRoom(roomId, delayText, latestCode = binaryCode) {
     const nextRoomId = "core";
 
     setCompletedRooms(prev => ({
@@ -1385,7 +1389,7 @@ function Level4({ onComplete, onBack }) {
 
     setRoom(nextRoomId);
 
-    return new Promise(r => setTimeout(r, delay))
+    return new Promise(r => setTimeout(r, delay(delayText)))
       .then(() => {
         const textToShow = getRoomText(nextRoomId);
         return loadNewRoom(textToShow);
@@ -1398,7 +1402,7 @@ function Level4({ onComplete, onBack }) {
 
   function handleRoomSuccess(roomId, bits = 1, delay = 1200) {
     return addLine("✅ NODE STABILISED", "success")
-      .then(() => new Promise(r => setTimeout(r, 800)))
+      .then(() => new Promise(r => setTimeout(r, delay(800))))
 
       .then(() => {
         if (bits > 0) return awardBits(bits);
@@ -1519,7 +1523,7 @@ function Level4({ onComplete, onBack }) {
           "system"
         )
 
-        .then(() => new Promise(r => setTimeout(r, 800))) // ⏸ pause before code
+        .then(() => new Promise(r => setTimeout(r, delay(800)))) // ⏸ pause before code
 
         .then(() => addLine(`> CURRENT CODE: ${updated.join("") || "NONE"}`, "system"))
 
@@ -1624,7 +1628,7 @@ function generateDebugPuzzle(stage = 1) {
         // ── STAGE 2/3: PUZZLE ONLY ──────────────────
         return addLine("", "system")
           .then(() => addLine("> RECONFIGURING CIRCUIT...", "system"))
-          .then(() => new Promise((r) => setTimeout(r, 1000)))
+          .then(() => new Promise((r) => setTimeout(r, delay(1000))))
           .then(() => addLine(`> LOGIC STAGE ${logicPuzzle.stage}/3`, "system"))
           .then(() => addLine(diagram, "system"))
           .then(() => addLine("Type: solve [0 or 1]", "system"));
@@ -1764,21 +1768,21 @@ function generateDebugPuzzle(stage = 1) {
 
                   addLine("> SYSTEM ERROR: INFINITE LOOP", "error")
                     .then(() => addLine("> CRITICAL FAILURE DETECTED", "error"))
-                    .then(() => new Promise(r => setTimeout(r, 800)))
+                    .then(() => new Promise(r => setTimeout(r, delay(800))))
 
                     .then(() => {
                       setDisplayedHistory([]);
                       return addLine("> SYSTEM COLLAPSE", "error");
                     })
 
-                    .then(() => new Promise((r) => setTimeout(r, 1000)))
+                    .then(() => new Promise((r) => setTimeout(r, delay(1000))))
 
                     .then(() => {
                       setDisplayedHistory([]);
                       return addLine("> REBOOTING SYSTEM...", "system");
                     })
 
-                    .then(() => new Promise(r => setTimeout(r, 1200)))
+                    .then(() => new Promise(r => setTimeout(r, delay(1200))))
 
                     .then(() => {
                       setRoom("core");
@@ -1844,7 +1848,7 @@ function generateDebugPuzzle(stage = 1) {
               setLogicPuzzle(generateLogicPuzzle(nextStage));
 
               return addLine(`> STAGE ${logicStage}/3 COMPLETE`, "system")
-                .then(() => new Promise(r => setTimeout(r, 500)))
+                .then(() => new Promise(r => setTimeout(r, delay(500))))
                 .then(() => addLine(`> ADVANCING TO STAGE ${nextStage}/3`, "system"))
                 .then(() => addLine("> Type 'look' to inspect new circuit", "system"));
             });
@@ -1868,14 +1872,14 @@ function generateDebugPuzzle(stage = 1) {
 
           return addLine("✅ Loop broken", "success")
             .then(() => addLine("> ATTEMPTING MANUAL OVERRIDE...", "system"))
-                .then(() => new Promise(r => setTimeout(r, 600)))
+                .then(() => new Promise(r => setTimeout(r, delay(600))))
                 .then(() => addLine("> INTERRUPTING LOOP...", "error"))
-                .then(() => new Promise(r => setTimeout(r, 600)))
+                .then(() => new Promise(r => setTimeout(r, delay(600))))
                 .then(() => {
                   triggerGlitch(800);
                   return addLine("> REALITY DESYNCHRONISING...", "error");
                 })
-                .then(() => new Promise(r => setTimeout(r, 1200)))
+                .then(() => new Promise(r => setTimeout(r, delay(1200))))
 
             .then(() => {
               if (bits === 0) {
@@ -1921,19 +1925,19 @@ function generateDebugPuzzle(stage = 1) {
         if (userValue === correctDecimal) {
           addLine("> AUTHENTICATION SUCCESSFUL", "success")
             .then(() => addLine("> VALIDATING...", "system"))
-            .then(() => new Promise(r => setTimeout(r, 600)))
+            .then(() => new Promise(r => setTimeout(r, delay(600))))
             .then(() => addLine("> DECRYPTING...", "system"))
-            .then(() => new Promise(r => setTimeout(r, 600)))
+            .then(() => new Promise(r => setTimeout(r, delay(600))))
             .then(() => addLine("> BYPASSING SECURITY...", "system"))
             .then(() => triggerGlitch(1200))
-            .then(() => new Promise(r => setTimeout(r, 800)))
+            .then(() => new Promise(r => setTimeout(r, delay(800))))
 
             .then(() => {
               setDisplayedHistory([]);
               return addLine("> ACCESS GRANTED", "success");
             })
 
-            .then(() => new Promise((r) => setTimeout(r, 600)))
+            .then(() => new Promise((r) => setTimeout(r, delay(600))))
 
             .then(() => {
               const nextRoom = ADVENTURE.rooms[currentRoom.puzzle.success];
@@ -1977,9 +1981,9 @@ function generateDebugPuzzle(stage = 1) {
               setDebugPuzzle(generateDebugPuzzle(nextStage));
 
               return addLine(`> DEBUG STAGE ${debugStage}/3 RESOLVED`, "system")
-                .then(() => new Promise(r => setTimeout(r, 500)))
+                .then(() => new Promise(r => setTimeout(r, delay(500))))
                 .then(() => addLine(`> LOADING NEXT ERROR...`, "error"))
-                .then(() => new Promise(r => setTimeout(r, 800)))
+                .then(() => new Promise(r => setTimeout(r, delay(800))))
                 .then(() => addLine("> Type 'look' to inspect code", "system"));
             });
 
