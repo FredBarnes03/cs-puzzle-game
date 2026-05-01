@@ -531,7 +531,8 @@ Paths detected: NORTH, EAST, SOUTH, WEST`,
       enterFirst: `> DEBUG NODE ACCESSED
 You enter a corrupted section of the system.
 Fragments of code flicker in and out of existence.
-An unstable process is running here.`,
+An unstable process is running here.
+type "look" to inspect the code and identify the bug.`,
 
       enterOther: "You return to the debug node. The corrupted code reappears.",
 
@@ -1398,8 +1399,11 @@ function Level4({ onComplete, onBack }) {
   const [locked, setLocked] = useState(false);
   const [debugStage, setDebugStage] = useState(1);
   const [debugPuzzle, setDebugPuzzle] = useState(null);
-  const CHAR_SPEED = 35;
-  const LINE_DELAY = 600;
+  const [debugWrongAttempts, setDebugWrongAttempts] = useState(0);
+  const FAST_MODE = true; // for testing true = instant text, false = typewriter effect
+  const CHAR_SPEED = FAST_MODE ? 0 : 35;
+  const LINE_DELAY = FAST_MODE ? 0 : 700;
+  const delay = (ms) => FAST_MODE ? ms * 0.6 : ms; // speed up all timeouts in fast mode
 
   useEffect(() => {
     if (historyRef.current) {
@@ -1488,7 +1492,7 @@ function Level4({ onComplete, onBack }) {
     setDisplayedHistory([]);
 
     return addLine("> TRANSFERRING TO NEW NODE...", "system")
-      .then(() => new Promise(r => setTimeout(r, 800)))
+      .then(() => new Promise(r => setTimeout(r, delay(800))))
       .then(() => {
         setDisplayedHistory([]);
         return addLine(text, "system");
@@ -1503,7 +1507,7 @@ function Level4({ onComplete, onBack }) {
     return roomData.enterOther || roomData.desc;
   }
 
-  function completeRoom(roomId, delay, latestCode = binaryCode) {
+  function completeRoom(roomId, delayText, latestCode = binaryCode) {
     const nextRoomId = "core";
 
     setCompletedRooms(prev => ({
@@ -1513,7 +1517,7 @@ function Level4({ onComplete, onBack }) {
 
     setRoom(nextRoomId);
 
-    return new Promise(r => setTimeout(r, delay))
+    return new Promise(r => setTimeout(r, delay(delayText)))
       .then(() => {
         const textToShow = getRoomText(nextRoomId);
         return loadNewRoom(textToShow);
@@ -1526,7 +1530,7 @@ function Level4({ onComplete, onBack }) {
 
   function handleRoomSuccess(roomId, bits = 1, delay = 1200) {
     return addLine("✅ NODE STABILISED", "success")
-      .then(() => new Promise(r => setTimeout(r, 800)))
+      .then(() => new Promise(r => setTimeout(r, delay(800))))
 
       .then(() => {
         if (bits > 0) return awardBits(bits);
@@ -1647,7 +1651,7 @@ function Level4({ onComplete, onBack }) {
           "system"
         )
 
-        .then(() => new Promise(r => setTimeout(r, 800))) // ⏸ pause before code
+        .then(() => new Promise(r => setTimeout(r, delay(800)))) // ⏸ pause before code
 
         .then(() => addLine(`> CURRENT CODE: ${updated.join("") || "NONE"}`, "system"))
 
@@ -1659,29 +1663,58 @@ function Level4({ onComplete, onBack }) {
   }
 
 function generateDebugPuzzle(stage = 1) {
-    if (stage === 1) {
-      return {
-        stage,
-        question: `Code snippet:\n\nlet total = 0;\ntotal = num;\n\nWhat is the issue?`,
-        answer: "overwrite"
-      };
-    }
-
-    if (stage === 2) {
-      return {
-        stage,
-        question: `Fix the code:\n\nlet total = 0;\ntotal = num;`,
-        answer: "total += num"
-      };
-    }
-
-    // stage 3
+  if (stage === 1) {
     return {
       stage,
-      question: `What is the output?\n\nlet x = 2;\nx = x * 3;\nx = x - 1;\nconsole.log(x);`,
-      answer: "5"
+      question: `Code snippet:
+
+let total = 0;
+let numbers = [2, 4, 6];
+
+for (let num of numbers) {
+  total = num;
+}
+
+What is the bug?`,
+      answers: ["overwrite", "replaces", "assignment", "not accumulating"],
+      keywords: ["overwrite", "overwritten", "replace", "replaces"],
+      hint: "Look at how the total variable is updated inside the loop. Is it adding to the total or replacing it?"
     };
   }
+
+  if (stage === 2) {
+    return {
+      stage,
+      question: `Fix the broken line:
+
+let total = 0;
+let numbers = [2, 4, 6];
+
+for (let num of numbers) {
+  total = num;
+}
+
+Type the corrected line.`,
+      answers: ["total += num", "total = total + num"],
+      hint: "You want to add num to total, not replace it. Try using += or total = total + num"
+    };
+  }
+
+  return {
+    stage,
+    question: `What is the output?
+
+let score = 3;
+
+score += 2;
+score *= 4;
+score -= 5;
+
+console.log(score);`,
+    answers: ["15"],
+    hint: "Follow the operations step by step: start with 3, add 2, then multiply by 4, then subtract 5. What do you get?"
+  };
+}
 
   // ── COMMAND HANDLER ──────────────────
   // Processes all player input:
@@ -1752,7 +1785,7 @@ function generateDebugPuzzle(stage = 1) {
         // ── STAGE 2/3: PUZZLE ONLY ──────────────────
         return addLine("", "system")
           .then(() => addLine("> RECONFIGURING CIRCUIT...", "system"))
-          .then(() => new Promise((r) => setTimeout(r, 1000)))
+          .then(() => new Promise((r) => setTimeout(r, delay(1000))))
           .then(() => addLine(`> LOGIC STAGE ${logicPuzzle.stage}/3`, "system"))
           .then(() => addLine(diagram, "system"))
           .then(() => addLine("Type: solve [0 or 1]", "system"));
@@ -1804,12 +1837,6 @@ function generateDebugPuzzle(stage = 1) {
               }
             });          
 
-          const code = binaryCode.join("");
-          if (code.length > 0) {
-            addLine(`> COLLECTED BINARY: ${code}`, "system")
-              .then(() => new Promise(r => setTimeout(r, 600)));
-          }
-
           // LOGIC ROOM
         } else if (nextId === "logic") {
           const textToShow = getRoomText(nextId);
@@ -1854,6 +1881,7 @@ function generateDebugPuzzle(stage = 1) {
             if (!completedRooms["debug"]) {
               setDebugStage(1);
               setDebugPuzzle(generateDebugPuzzle(1));
+              setDebugWrongAttempts(0);
             }
 
           });
@@ -1898,21 +1926,21 @@ function generateDebugPuzzle(stage = 1) {
 
                   addLine("> SYSTEM ERROR: INFINITE LOOP", "error")
                     .then(() => addLine("> CRITICAL FAILURE DETECTED", "error"))
-                    .then(() => new Promise(r => setTimeout(r, 800)))
+                    .then(() => new Promise(r => setTimeout(r, delay(800))))
 
                     .then(() => {
                       setDisplayedHistory([]);
                       return addLine("> SYSTEM COLLAPSE", "error");
                     })
 
-                    .then(() => new Promise((r) => setTimeout(r, 1000)))
+                    .then(() => new Promise((r) => setTimeout(r, delay(1000))))
 
                     .then(() => {
                       setDisplayedHistory([]);
                       return addLine("> REBOOTING SYSTEM...", "system");
                     })
 
-                    .then(() => new Promise(r => setTimeout(r, 1200)))
+                    .then(() => new Promise(r => setTimeout(r, delay(1200))))
 
                     .then(() => {
                       setRoom("core");
@@ -1978,7 +2006,7 @@ function generateDebugPuzzle(stage = 1) {
               setLogicPuzzle(generateLogicPuzzle(nextStage));
 
               return addLine(`> STAGE ${logicStage}/3 COMPLETE`, "system")
-                .then(() => new Promise(r => setTimeout(r, 500)))
+                .then(() => new Promise(r => setTimeout(r, delay(500))))
                 .then(() => addLine(`> ADVANCING TO STAGE ${nextStage}/3`, "system"))
                 .then(() => addLine("> Type 'look' to inspect new circuit", "system"));
             });
@@ -2002,14 +2030,14 @@ function generateDebugPuzzle(stage = 1) {
 
           return addLine("✅ Loop broken", "success")
             .then(() => addLine("> ATTEMPTING MANUAL OVERRIDE...", "system"))
-                .then(() => new Promise(r => setTimeout(r, 600)))
+                .then(() => new Promise(r => setTimeout(r, delay(600))))
                 .then(() => addLine("> INTERRUPTING LOOP...", "error"))
-                .then(() => new Promise(r => setTimeout(r, 600)))
+                .then(() => new Promise(r => setTimeout(r, delay(600))))
                 .then(() => {
                   triggerGlitch(800);
-                  addLine("> REALITY DESYNCHRONISING...", "error");
+                  return addLine("> REALITY DESYNCHRONISING...", "error");
                 })
-                .then(() => new Promise(r => setTimeout(r, 1200)))
+                .then(() => new Promise(r => setTimeout(r, delay(1200))))
 
             .then(() => {
               if (bits === 0) {
@@ -2055,19 +2083,19 @@ function generateDebugPuzzle(stage = 1) {
         if (userValue === correctDecimal) {
           addLine("> AUTHENTICATION SUCCESSFUL", "success")
             .then(() => addLine("> VALIDATING...", "system"))
-            .then(() => new Promise(r => setTimeout(r, 600)))
+            .then(() => new Promise(r => setTimeout(r, delay(600))))
             .then(() => addLine("> DECRYPTING...", "system"))
-            .then(() => new Promise(r => setTimeout(r, 600)))
+            .then(() => new Promise(r => setTimeout(r, delay(600))))
             .then(() => addLine("> BYPASSING SECURITY...", "system"))
             .then(() => triggerGlitch(1200))
-            .then(() => new Promise(r => setTimeout(r, 800)))
+            .then(() => new Promise(r => setTimeout(r, delay(800))))
 
             .then(() => {
               setDisplayedHistory([]);
               return addLine("> ACCESS GRANTED", "success");
             })
 
-            .then(() => new Promise((r) => setTimeout(r, 600)))
+            .then(() => new Promise((r) => setTimeout(r, delay(600))))
 
             .then(() => {
               const nextRoom = ADVENTURE.rooms[currentRoom.puzzle.success];
@@ -2093,7 +2121,18 @@ function generateDebugPuzzle(stage = 1) {
       // DEBUG ROOM
       if (room === "debug" && debugPuzzle) {
 
-        if (answer === debugPuzzle.answer) {
+        const userAnswer = answer.trim().toLowerCase();
+
+        let isCorrect = false;
+        if (debugPuzzle.keywords) {
+          isCorrect = debugPuzzle.keywords.some(keyword =>
+            userAnswer.includes(keyword)
+          );
+        } else if (debugPuzzle.answers) {
+          isCorrect = debugPuzzle.answers.includes(userAnswer);
+        }
+
+        if (isCorrect) {        
 
           return addLine("✅ Fix applied", "success")
 
@@ -2109,19 +2148,27 @@ function generateDebugPuzzle(stage = 1) {
 
               setDebugStage(nextStage);
               setDebugPuzzle(generateDebugPuzzle(nextStage));
+              setDebugWrongAttempts(0);
 
               return addLine(`> DEBUG STAGE ${debugStage}/3 RESOLVED`, "system")
-                .then(() => new Promise(r => setTimeout(r, 500)))
+                .then(() => new Promise(r => setTimeout(r, delay(500))))
                 .then(() => addLine(`> LOADING NEXT ERROR...`, "error"))
-                .then(() => new Promise(r => setTimeout(r, 800)))
+                .then(() => new Promise(r => setTimeout(r, delay(800))))
                 .then(() => addLine("> Type 'look' to inspect code", "system"));
             });
+          } else {
+            triggerGlitch(300);
+            setScore(s => Math.max(0, s - 10));
 
-        } else {
-          triggerGlitch(300);
-          addLine("❌ Incorrect. Analyse the code carefully.", "error");
-          setScore(s => Math.max(0, s - 10));
-        }
+            const newAttempts = debugWrongAttempts + 1;
+            setDebugWrongAttempts(newAttempts);
+
+            addLine("❌ Incorrect. Analyse the code carefully.", "error");
+
+            if (newAttempts >= 2 && debugPuzzle.hint) {
+              addLine(`💡 Hint: ${debugPuzzle.hint}`, "system");
+            }
+          }
 
         return;
       }
