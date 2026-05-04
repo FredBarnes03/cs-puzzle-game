@@ -158,7 +158,7 @@ const BINARY_QUESTIONS = [
     binary: "10010",
     answer: 18,
     explanation: "10010 = 1*16 + 0*8 + 0*4 + 1*2 + 0*1 = 18",
-  },
+  }
 ];
 
 // ── LEVEL 2 – IF/ELSE QUESTIONS ───────────────
@@ -306,7 +306,7 @@ const IF_ELSE_QUESTIONS = [
   },
 ];
 
-// ── LEVEL 3 – LOGIC GATES ─────────────────────
+// ── LEVEL 2 – LOGIC GATES ─────────────────────
 // ── GATE DATA ─────────────────────────────────
 const GATE_DATA = [
   {
@@ -896,7 +896,7 @@ function Level2Practice({ onProceedToChallenge, onBack }) {
           style={{ padding: "6px 12px", fontSize: "0.7rem" }} onClick={onBack}>
           ← Back
         </button>
-        <div className="level-tag">LEVEL 2 · PRACTICE</div>
+        <div className="level-tag">LEVEL 3 · PRACTICE</div>
         <div className="game-title">Logic Gates</div>
       </div>
  
@@ -1118,7 +1118,7 @@ function Level2Challenge({ onComplete, onBack, onAchievement }) {
           style={{ padding: "6px 12px", fontSize: "0.7rem" }} onClick={onBack}>
           ← Back
         </button>
-        <div className="level-tag">LEVEL 2 · CHALLENGE</div>
+        <div className="level-tag">LEVEL 3 · CHALLENGE</div>
         <div className="game-title">Logic Gates</div>
         <div className="score-display">{score} pts</div>
       </div>
@@ -1246,9 +1246,9 @@ function Level2Challenge({ onComplete, onBack, onAchievement }) {
   );
 }
  
-// LEVEL 2 WRAPPER — Practice | Challenge tabs
-// This is the single component used for screen "level 2"
-function Level2Wrapper({ onComplete, onBack, onAchievement }) {
+// LEVEL 3 WRAPPER — Practice | Challenge tabs
+// This is the single component used for screen "level 3"
+function Level3Wrapper({ onComplete, onBack, onAchievement }) {
   const [tab, setTab] = useState("practice");
  
   const tabStyle = (active) => ({
@@ -1274,13 +1274,13 @@ function Level2Wrapper({ onComplete, onBack, onAchievement }) {
       </div>
  
       {tab === "practice" && (
-        <Level2Practice
+        <Level3Practice
           onProceedToChallenge={() => setTab("challenge")}
           onBack={onBack}
         />
       )}
       {tab === "challenge" && (
-        <Level2Challenge
+        <Level3Challenge
           onComplete={onComplete}
           onBack={onBack}
           onAchievement={onAchievement}
@@ -1692,8 +1692,164 @@ function HomeScreen({
   );
 }
 
-// ── LEVEL 1 – IF/ELSE ─────────────────────────
+// ── LEVEL 1 – BINARY TO DECIMAL ───────────────
 function Level1({ onComplete, onBack, onAchievement }) {
+  const [qIdx, setQIdx] = useState(0);
+  const [answer, setAnswer] = useState("");
+  const [answered, setAnswered] = useState(false);
+  const [score, setScore] = useState(0);
+  const [mistakes, setMistakes] = useState(0);
+  const [done, setDone] = useState(false);
+  const [firstCorrect, setFirstCorrect] = useState(false);
+
+  const q = BINARY_QUESTIONS[qIdx];
+  const progress = (qIdx / BINARY_QUESTIONS.length) * 100;
+
+  function checkAnswer() {
+    if (answered) return;
+
+    const userValue = Number(answer.trim());
+    const correct = userValue === q.answer;
+
+    setAnswered(true);
+    playSound(correct ? "correct" : "wrong");
+
+    if (correct) {
+      setScore(s => s + 100);
+
+      if (!firstCorrect) {
+        setFirstCorrect(true);
+        if (onAchievement) onAchievement("first_blood");
+      }
+    } else {
+      setMistakes(m => m + 1);
+    }
+  }
+
+  function next() {
+    if (qIdx + 1 >= BINARY_QUESTIONS.length) {
+      setDone(true);
+    } else {
+      setQIdx(i => i + 1);
+      setAnswer("");
+      setAnswered(false);
+    }
+  }
+
+  if (done) {
+    const stars = score >= 500 ? "⭐⭐⭐" : score >= 300 ? "⭐⭐" : "⭐";
+
+    return (
+      <div className="screen">
+        <div className="victory-card">
+          <div className="victory-title">LEVEL COMPLETE!</div>
+          <div className="stars">{stars}</div>
+          <div style={{ color: "var(--text-dim)", marginBottom: 8 }}>
+            Binary conversion mastered
+          </div>
+          <div className="victory-score">{score} pts</div>
+          <div style={{ color: "var(--text-dim)", fontSize: "0.8rem", marginBottom: 24 }}>
+            You converted binary values into decimal numbers.
+          </div>
+          <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+            <button className="btn btn-ghost" onClick={onBack}>
+              ← Menu
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={() => onComplete(score, mistakes)}
+            >
+              Next Level →
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="game-screen">
+      <div className="game-header">
+        <button
+          className="btn btn-ghost"
+          style={{ padding: "6px 12px", fontSize: "0.7rem" }}
+          onClick={onBack}
+        >
+          ← Back
+        </button>
+        <div className="level-tag">LEVEL 1</div>
+        <div className="game-title">Binary to Decimal</div>
+        <div className="score-display">{score} pts</div>
+      </div>
+
+      <div className="progress-bar">
+        <div className="progress-fill" style={{ width: `${progress}%` }} />
+      </div>
+
+      <div className="info-box">
+        Question {qIdx + 1} of {BINARY_QUESTIONS.length} — Convert this binary number into decimal.
+      </div>
+
+      <div className="code-block" style={{ textAlign: "center" }}>
+        <div style={{ fontSize: "0.75rem", color: "var(--text-dim)", marginBottom: 12 }}>
+          Binary
+        </div>
+        <div style={{ fontSize: "3rem", color: "var(--accent)", letterSpacing: 8 }}>
+          {q.binary}
+        </div>
+        <div style={{ marginTop: 14, fontSize: "0.8rem", color: "var(--text-dim)" }}>
+          Use place values: 8, 4, 2, 1 for 4-bit numbers.
+        </div>
+      </div>
+
+      <div className="hint-text">
+        💡 Example: 1010 = 1×8 + 0×4 + 1×2 + 0×1 = 10
+      </div>
+
+      <div className="adventure-input-row">
+        <span className="adventure-prompt">decimal&gt;</span>
+        <input
+          className="adventure-input"
+          value={answer}
+          onChange={e => setAnswer(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === "Enter" && answer.trim() && !answered) {
+              checkAnswer();
+            }
+          }}
+          placeholder="type decimal answer..."
+          disabled={answered}
+          autoFocus
+        />
+      </div>
+
+      {!answered && (
+        <button className="btn btn-primary" onClick={checkAnswer} style={{ alignSelf: "flex-start" }}>
+          Check Answer
+        </button>
+      )}
+
+      {answered && (
+        <>
+          <div className={`feedback-box ${Number(answer.trim()) === q.answer ? "correct" : "wrong"}`}>
+            <strong>
+              {Number(answer.trim()) === q.answer ? "✅ Correct!" : `❌ Not quite — answer was ${q.answer}`}
+            </strong>
+            <br />
+            {q.explanation}
+          </div>
+
+          <button className="btn btn-primary" onClick={next} style={{ alignSelf: "flex-end" }}>
+            {qIdx + 1 >= BINARY_QUESTIONS.length ? "See Results →" : "Next →"}
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── LEVEL 2 – IF/ELSE ─────────────────────────
+function Level2({ onComplete, onBack, onAchievement }) {
   const [qIdx, setQIdx] = useState(0);
   const [selected, setSelected] = useState(null);
   const [answered, setAnswered] = useState(false);
@@ -1780,7 +1936,7 @@ function Level1({ onComplete, onBack, onAchievement }) {
         >
           ← Back
         </button>
-        <div className="level-tag">LEVEL 1</div>
+        <div className="level-tag">LEVEL 2</div>
         <div className="game-title">If / Else</div>
         <div className="score-display">{score} pts</div>
       </div>
@@ -1881,8 +2037,8 @@ function Level1({ onComplete, onBack, onAchievement }) {
   );
 }
 
-// ── LEVEL 2 – LOGIC GATES ─────────────────────
-function Level2({ onComplete, onBack }) {
+// ── LEVEL 3 – LOGIC GATES ─────────────────────
+function Level3({ onComplete, onBack }) {
   const [pIdx, setPIdx] = useState(0);
   const [selectedGate, setSelectedGate] = useState("AND");
   const [answered, setAnswered] = useState(false);
@@ -3068,6 +3224,10 @@ function App() {
   const [unlockedAchievements, setUnlockedAchievements] = useState([]);
   const [toastQueue, setToastQueue] = useState([]);
 
+  function handleSelectLevel(id) {
+  setScreen(`level${id}`);
+}
+
   function unlockAchievement(id) {
     if (unlockedAchievements.includes(id)) return;
     const achievement = ACHIEVEMENTS.find((a) => a.id === id);
@@ -3092,9 +3252,10 @@ function App() {
     // ── ACHIEVEMENTS ON LEVEL COMPLETE ──
     if (mistakes === 0) {
       const ids = {
-        1: "no_mistakes_1",
-        2: "no_mistakes_2"
-      };
+      1: "no_mistakes_1",
+      2: "no_mistakes_2",
+      3: "no_mistakes_3"
+    };
       if (ids[levelId]) unlockAchievement(ids[levelId]);
     }
     if (levelId === 4) unlockAchievement("escapee");
@@ -3102,9 +3263,9 @@ function App() {
     const newCompleted = completedLevels.includes(levelId)
       ? completedLevels
       : [...completedLevels, levelId];
-    if (newCompleted.length >= 3) unlockAchievement("all_levels");
+    if (newCompleted.length >= 4) unlockAchievement("all_levels");
 
-    const nextId = levelId === 2 ? 4 : levelId + 1;
+    const nextId = levelId + 1;
     if (nextId <= 4) setScreen(`level${nextId}`);
     else setScreen("home");
   }
@@ -3127,8 +3288,16 @@ function App() {
         />
       )}
       {screen === "level2" && (
-        <Level2Wrapper
+        <Level2
           onComplete={(pts, mistakes) => completeLevel(2, pts, mistakes)}
+          onBack={() => setScreen("home")}
+          onAchievement={unlockAchievement}
+        />
+      )}
+
+      {screen === "level3" && (
+        <Level3
+          onComplete={(pts, mistakes) => completeLevel(3, pts, mistakes)}
           onBack={() => setScreen("home")}
           onAchievement={unlockAchievement}
         />
