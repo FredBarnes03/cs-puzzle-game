@@ -1934,6 +1934,7 @@ function Level1({ onComplete, onBack, onAchievement }) {
 
 // ── LEVEL 2 – IF/ELSE ─────────────────────────
 function Level2({ onComplete, onBack, onAchievement }) {
+  const [started, setStarted] = useState(false);
   const [qIdx, setQIdx] = useState(0);
   const [selected, setSelected] = useState(null);
   const [answered, setAnswered] = useState(false);
@@ -1973,6 +1974,42 @@ function Level2({ onComplete, onBack, onAchievement }) {
   }
 
   const isCorrect = answered && q.correctAnswers.includes(selected);
+
+  if (!started) {
+    return (
+      <div className="screen">
+        <div className="victory-card">
+          <div className="victory-title">IF / ELSE</div>
+
+          <div style={{ color: "var(--text-dim)", marginBottom: 16 }}>
+            Complete Python if/else statements by choosing the condition that makes the code behave correctly.
+          </div>
+
+          <div className="info-box" style={{ textAlign: "left" }}>
+            <strong>How it works:</strong>
+            <br /><br />
+            Read the scenario, inspect the Python code, then choose the missing condition.
+            <br /><br />
+            Example:
+            <br />
+            <span style={{ color: "var(--accent3)" }}>
+              if age &gt;= 18:
+            </span>
+            <br />
+            &nbsp;&nbsp;&nbsp;&nbsp;print("You can vote!")
+            <br />
+            else:
+            <br />
+            &nbsp;&nbsp;&nbsp;&nbsp;print("Too young.")
+          </div>
+
+          <button className="btn btn-primary" onClick={() => setStarted(true)}>
+            Start Level →
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (done) {
     const stars = score >= 300 ? "⭐⭐⭐" : score >= 200 ? "⭐⭐" : "⭐";
