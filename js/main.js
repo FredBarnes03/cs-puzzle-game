@@ -2657,11 +2657,11 @@ function generateDebugPuzzle(stage = 1) {
       stage,
       question: `Code snippet:
 
-let total = 0;
-let numbers = [2, 4, 6];
+total = 0
+numbers = [2, 4, 6]
 
-for (let num of numbers) {
-  total = num;
+for num in numbers:
+    total = num
 }
 
 What is the bug?`,
@@ -2676,11 +2676,11 @@ What is the bug?`,
       stage,
       question: `Fix the broken line:
 
-let total = 0;
-let numbers = [2, 4, 6];
+total = 0
+numbers = [2, 4, 6]
 
-for (let num of numbers) {
-  total = num;
+for num in numbers:
+    total = num
 }
 
 Type the corrected line.`,
@@ -2706,21 +2706,57 @@ console.log(score);`,
 }
 
 function generateIfElsePuzzle(stage = 1) {
-  const value = Math.floor(Math.random() * 100);
+  if (stage === 1) {
+    const energy = Math.floor(Math.random() * 100);
+    const threshold = 40;
+    const result = energy >= threshold;
 
-  const threshold = stage === 1 ? 50 : stage === 2? 30 : 70;
-
-  const condition = `value > ${threshold}`;
-  const correct = value > threshold ? "north" : "south";
-
-  return {
-    value,
-    threshold,
-    condition,
-    correct,
-    stage
+    return {
+      stage,
+      title: "Power threshold",
+      condition: `energy >= ${threshold}`,
+      variables: [`energy = ${energy}`],
+      correct: result ? "north" : "south",
+      explanation: `${energy} >= ${threshold} is ${result ? "TRUE" : "FALSE"}.`
     };
   }
+
+  if (stage === 2) {
+    const accessLevel = Math.floor(Math.random() * 5) + 1;
+    const systemLocked = Math.random() < 0.5;
+    const result = accessLevel >= 3 && systemLocked === false;
+
+    return {
+      stage,
+      title: "Access control",
+      condition: `access_level >= 3 and system_locked == False`,
+      variables: [
+        `access_level = ${accessLevel}`,
+        `system_locked = ${systemLocked ? "True" : "False"}`
+      ],
+      correct: result ? "north" : "south",
+      explanation: `Access only succeeds if level is 3 or higher AND the system is not locked.`
+    };
+  }
+
+  const signalStable = Math.random() < 0.5;
+  const overrideActive = Math.random() < 0.5;
+  const corruptionLevel = Math.floor(Math.random() * 100);
+  const result = (signalStable || overrideActive) && corruptionLevel < 60;
+
+  return {
+    stage,
+    title: "Nested system condition",
+    condition: `(signal_stable or override_active) and corruption_level < 60`,
+    variables: [
+      `signal_stable = ${signalStable ? "True" : "False"}`,
+      `override_active = ${overrideActive ? "True" : "False"}`,
+      `corruption_level = ${corruptionLevel}`
+    ],
+    correct: result ? "north" : "south",
+    explanation: `The first part needs either signal_stable OR override_active to be true, and corruption_level must be below 60.`
+  };
+}
 
   // ── COMMAND HANDLER ──────────────────
   // Processes all player input:
@@ -2750,10 +2786,14 @@ function generateIfElsePuzzle(stage = 1) {
       if (room === "ifelse" && ifPuzzle) {
         return addLine(currentRoom.desc, "system")
           .then(() => addLine(`> IF / ELSE STAGE ${ifStage}/3`, "system"))
-          .then(() => addLine(`IF value > ${ifPuzzle.threshold}`, "system"))
-          .then(() => addLine(`value = ${ifPuzzle.value}`, "system"))
-          .then(() => addLine("TRUE  -> go north", "system"))
-          .then(() => addLine("FALSE -> go south", "system"));
+          .then(() => addLine(`> ${ifPuzzle.title.toUpperCase()}`, "system"))
+          .then(() => addLine(`> ${ifPuzzle.title.toUpperCase()}`, "system"))
+          .then(() => addLine(ifPuzzle.variables.join("\n"), "system"))
+          .then(() => addLine("", "system"))
+          .then(() => addLine(`if ${ifPuzzle.condition}:`, "system"))
+          .then(() => addLine("    go north", "system"))
+          .then(() => addLine("else:", "system"))
+          .then(() => addLine("    go south", "system"));
       }
 
       // LOGIC ROOM
@@ -2824,8 +2864,11 @@ function generateIfElsePuzzle(stage = 1) {
       if (room === "ifelse" && ifPuzzle) {
         if (dir === ifPuzzle.correct) {
           return addLine("> EVALUATING CONDITION...", "system")
-            .then(() => new Promise(r => setTimeout(r, delay(500))))
+            .then(() => new Promise(r => setTimeout(r, delay(400))))
+            .then(() => addLine("> PROCESSING...", "system"))
+            .then(() => new Promise(r => setTimeout(r, delay(400))))
             .then(() => addLine("✅ CONDITION EVALUATED CORRECTLY", "success"))
+            .then(() => addLine(`> ${ifPuzzle.explanation}`, "system"))
             .then(() => {
               if (ifStage === 3) {
                 return handleRoomSuccess("ifelse", 3);
@@ -2844,8 +2887,10 @@ function generateIfElsePuzzle(stage = 1) {
         }
 
         triggerGlitch(300);
-        addLine("❌ CONDITION EVALUATED INCORRECTLY", "error");
-        addLine("> Re-check whether the condition is TRUE or FALSE.", "system");
+
+        addLine("❌ CONDITION FAILED", "error");
+        addLine("> PATH INVALID — LOGIC MISMATCH DETECTED", "system");
+        addLine("> RE-EVALUATE THE CONDITION", "system");
         setScore(s => Math.max(0, s - 10));
         return;
       }
