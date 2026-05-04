@@ -133,7 +133,38 @@ const LEVELS = [
 ];
 
 // ── LEVEL 1 - BINARY TO DECIMAL QUESTIONS ───────────────
-const BINARY_QUESTIONS = [
+function generateBinaryQuestions(count = 7) {
+  const questions = [];
+  const used = new Set();
+
+  while (questions.length < count) {
+    // random number between 1–31 (avoid 0 for simplicity)
+    const max = questions.length < 3 ? 15 : 63; // harder later
+    const num = Math.floor(Math.random() * max) + 1;
+
+    if (used.has(num)) continue;
+    used.add(num);
+
+    const binary = num.toString(2);
+
+    // build explanation dynamically
+    const bits = binary.split("").reverse();
+    const explanationParts = bits.map((bit, i) => {
+      const value = 2 ** i;
+      return `${bit}×${value}`;
+    });
+
+    questions.push({
+      binary,
+      answer: num,
+      explanation: `${binary} = ${explanationParts.reverse().join(" + ")} = ${num}`
+    });
+  }
+
+  return questions;
+}
+
+/*const BINARY_QUESTIONS = [
   {
     binary: "0011",
     answer: 3,
@@ -159,7 +190,7 @@ const BINARY_QUESTIONS = [
     answer: 18,
     explanation: "10010 = 1*16 + 0*8 + 0*4 + 1*2 + 0*1 = 18",
   }
-];
+];*/
 
 // ── LEVEL 2 – IF/ELSE QUESTIONS ───────────────
 const IF_ELSE_QUESTIONS = [
@@ -1322,6 +1353,8 @@ function computeGate(gate, a, b) {
 // exits -> available directions
 // puzzle -> optional puzzle for the room
 
+const ENABLE_DEBUG_ROOM = false; // Set to true to enable the debug room
+
 const binCode = ""
 const ADVENTURE = {
   start: "room1",
@@ -1366,12 +1399,12 @@ A translucent screen materialises in front of you.
 The firewall looms ahead - a barrier between you and escape.
 Multiple paths extend deeper into the system.
 
-Paths detected: NORTH, EAST, SOUTH, WEST, FIREWALL`,
+Paths detected: NORTH, EAST, WEST, FIREWALL`,
 
       exits: {
         north: "loopRoom",
         east: "logic",
-        south: "debug",
+        ...(ENABLE_DEBUG_ROOM && { south: "debug" }),
         west: "room1",
         firewall: "firewall"
       }
@@ -1694,6 +1727,8 @@ function HomeScreen({
 
 // ── LEVEL 1 – BINARY TO DECIMAL ───────────────
 function Level1({ onComplete, onBack, onAchievement }) {
+  const [started, setStarted] = useState(false);
+  const [questions] = useState(() => generateBinaryQuestions(7));
   const [qIdx, setQIdx] = useState(0);
   const [answer, setAnswer] = useState("");
   const [answered, setAnswered] = useState(false);
@@ -1702,8 +1737,45 @@ function Level1({ onComplete, onBack, onAchievement }) {
   const [done, setDone] = useState(false);
   const [firstCorrect, setFirstCorrect] = useState(false);
 
-  const q = BINARY_QUESTIONS[qIdx];
-  const progress = (qIdx / BINARY_QUESTIONS.length) * 100;
+  const q = questions[qIdx];
+  const progress = (qIdx / questions.length) * 100;
+
+  if (!started) {
+    return (
+      <div className="screen">
+        <div className="victory-card">
+          <div className="victory-title">BINARY → DECIMAL</div>
+
+          <div style={{ color: "var(--text-dim)", marginBottom: 16 }}>
+            Learn how computers convert binary numbers into decimal.
+          </div>
+
+          <div className="info-box" style={{ textAlign: "left" }}>
+            <strong>How it works:</strong>
+            <br /><br />
+            Each position represents a power of 2:
+            <br />
+            <span style={{ color: "var(--accent)" }}>
+              8 &nbsp;&nbsp; 4 &nbsp;&nbsp; 2 &nbsp;&nbsp; 1
+            </span>
+            <br /><br />
+            Multiply each bit by its value, then add:
+            <br /><br />
+            <span style={{ color: "var(--accent3)" }}>
+              1010 = 1×8 + 0×4 + 1×2 + 0×1 = 10
+            </span>
+          </div>
+
+          <button
+            className="btn btn-primary"
+            onClick={() => setStarted(true)}
+          >
+            Start Level →
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   function checkAnswer() {
     if (answered) return;
@@ -1727,7 +1799,7 @@ function Level1({ onComplete, onBack, onAchievement }) {
   }
 
   function next() {
-    if (qIdx + 1 >= BINARY_QUESTIONS.length) {
+    if (qIdx + 1 >= questions.length) {
       setDone(true);
     } else {
       setQIdx(i => i + 1);
@@ -1787,7 +1859,7 @@ function Level1({ onComplete, onBack, onAchievement }) {
       </div>
 
       <div className="info-box">
-        Question {qIdx + 1} of {BINARY_QUESTIONS.length} — Convert this binary number into decimal.
+        Question {qIdx + 1} of {questions.length} — Convert this binary number into decimal.
       </div>
 
       <div className="code-block" style={{ textAlign: "center" }}>
@@ -1840,7 +1912,7 @@ function Level1({ onComplete, onBack, onAchievement }) {
           </div>
 
           <button className="btn btn-primary" onClick={next} style={{ alignSelf: "flex-end" }}>
-            {qIdx + 1 >= BINARY_QUESTIONS.length ? "See Results →" : "Next →"}
+            {qIdx + 1 >= questions.length ? "See Results →" : "Next →"}
           </button>
         </>
       )}
@@ -2301,6 +2373,7 @@ function Level4({ onComplete, onBack }) {
   const CHAR_SPEED = FAST_MODE ? 0 : 35;
   const LINE_DELAY = FAST_MODE ? 0 : 700;
   const delay = (ms) => FAST_MODE ? ms * 0.6 : ms; // speed up all timeouts in fast mode
+  
 
   useEffect(() => {
     if (historyRef.current) {
@@ -2700,6 +2773,12 @@ console.log(score);`,
     // ── GO ──────────────────
     } else if (raw.startsWith("go ")) {
       const dir = raw.replace("go ", "").trim();
+
+      if (dir === "south" && !ENABLE_DEBUG_ROOM) {
+        addLine("No path detected in that direction.", "error");
+        setScore((s) => Math.max(0, s - 10));
+        return;
+      }
 
       if (dir === "firewall" && binaryCode.length < 7) {
         addLine("> ACCESS DENIED - INSUFFICIENT DATA", "error");
