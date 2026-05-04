@@ -2364,6 +2364,7 @@ function Level4({ onComplete, onBack }) {
     { text: "Type: go [direction] / look / help", type: "system" },
   ]);
 
+  const [started, setStarted] = useState(false);
   const [input, setInput] = useState("");
   const [won, setWon] = useState(false);
   const [score, setScore] = useState(300);
@@ -3307,6 +3308,46 @@ function generateIfElsePuzzle(stage = 1) {
       handleCommand(input);
       setInput("");
     }
+  }
+
+  if (!started) {
+    return (
+      <div className="screen">
+        <div className="victory-card">
+          <div className="victory-title">TEXT ADVENTURE</div>
+
+          <div style={{ color: "var(--text-dim)", marginBottom: 16 }}>
+            You have been digitised inside a computer system. Explore rooms, solve puzzles, collect binary fragments, and bypass the firewall to escape.
+          </div>
+
+          <div className="info-box" style={{ textAlign: "left" }}>
+            <strong>Commands:</strong>
+            <br /><br />
+            <span style={{ color: "var(--accent3)" }}>go north</span> / 
+            <span style={{ color: "var(--accent3)" }}> go south</span> / 
+            <span style={{ color: "var(--accent3)" }}> go east</span> / 
+            <span style={{ color: "var(--accent3)" }}> go west</span>
+            <br /><br />
+            <span style={{ color: "var(--accent3)" }}>look</span> — inspect the current room
+            <br />
+            <span style={{ color: "var(--accent3)" }}>solve [answer]</span> — solve a puzzle
+            <br />
+            <span style={{ color: "var(--accent3)" }}>help</span> — show commands again
+          </div>
+
+          <div className="hint-text">
+            💡 Tip: Use <span style={{ color: "var(--accent)" }}>look</span> when entering puzzle rooms.
+          </div>
+
+          <button
+            className="btn btn-primary"
+            onClick={() => setStarted(true)}
+          >
+            Start Adventure →
+          </button>
+        </div>
+      </div>
+    );
   }
 
   if (won) {
