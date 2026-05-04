@@ -1349,6 +1349,8 @@ function computeGate(gate, a, b) {
 // puzzle -> optional puzzle for the room
 
 const ENABLE_DEBUG_ROOM = false; // Set to true to enable the debug room
+const ENABLE_IF_ELSE_ROOM = true; // Set to true to enable the if/else room
+
 
 const binCode = ""
 const ADVENTURE = {
@@ -1394,11 +1396,12 @@ A translucent screen materialises in front of you.
 The firewall looms ahead - a barrier between you and escape.
 Multiple paths extend deeper into the system.
 
-Paths detected: NORTH, EAST, WEST, FIREWALL`,
+Paths detected: NORTH, EAST, SOUTH, WEST, FIREWALL`,
 
       exits: {
         north: "loopRoom",
         east: "logic",
+        ...(ENABLE_IF_ELSE_ROOM && { south: "ifelse" }),
         ...(ENABLE_DEBUG_ROOM && { south: "debug" }),
         west: "room1",
         firewall: "firewall"
@@ -1474,7 +1477,6 @@ Paths detected: NORTH, EAST, SOUTH, WEST`,
       }
     },
 
-    // TODO: Expand debug room to multiple sequential problems
     // DEBUG
     debug: {
       enterFirst: `> DEBUG NODE ACCESSED
@@ -1501,6 +1503,21 @@ Type: solve [code]`,
         answer: "total += num",
         success: "core"
       }
+    },
+
+    // IF/ELSE ROOM
+    ifelse: {
+      enterFirst: `> CONDITIONAL NODE ACCESSED
+  
+A digital gate materialises in front of you, its logic incomplete.
+It requires a condition to determine which path the data should flow through.
+A rule flashes in front of you...`,
+
+      enterOther: "You return to the conditional node. The gate awaits your input.",
+
+      desc: `The gate's logic is missing a crucial component - the condition.`,
+
+      exits: {},
     },
 
     // FIREWALL
@@ -2366,6 +2383,9 @@ function Level4({ onComplete, onBack }) {
   const [debugStage, setDebugStage] = useState(1);
   const [debugPuzzle, setDebugPuzzle] = useState(null);
   const [debugWrongAttempts, setDebugWrongAttempts] = useState(0);
+  const [ifPuzzle, setIfPuzzle] = useState(null);
+  const [ifStage, setIfStage] = useState(1);
+
   const FAST_MODE = true; // for testing true = instant text, false = typewriter effect
   const CHAR_SPEED = FAST_MODE ? 0 : 35;
   const LINE_DELAY = FAST_MODE ? 0 : 700;
@@ -2637,11 +2657,11 @@ function generateDebugPuzzle(stage = 1) {
       stage,
       question: `Code snippet:
 
-let total = 0;
-let numbers = [2, 4, 6];
+total = 0
+numbers = [2, 4, 6]
 
-for (let num of numbers) {
-  total = num;
+for num in numbers:
+    total = num
 }
 
 What is the bug?`,
@@ -2656,11 +2676,11 @@ What is the bug?`,
       stage,
       question: `Fix the broken line:
 
-let total = 0;
-let numbers = [2, 4, 6];
+total = 0
+numbers = [2, 4, 6]
 
-for (let num of numbers) {
-  total = num;
+for num in numbers:
+    total = num
 }
 
 Type the corrected line.`,
@@ -2682,6 +2702,59 @@ score -= 5;
 console.log(score);`,
     answers: ["15"],
     hint: "Follow the operations step by step: start with 3, add 2, then multiply by 4, then subtract 5. What do you get?"
+  };
+}
+
+function generateIfElsePuzzle(stage = 1) {
+  if (stage === 1) {
+    const energy = Math.floor(Math.random() * 100);
+    const threshold = 40;
+    const result = energy >= threshold;
+
+    return {
+      stage,
+      title: "Power threshold",
+      condition: `energy >= ${threshold}`,
+      variables: [`energy = ${energy}`],
+      correct: result ? "north" : "south",
+      explanation: `${energy} >= ${threshold} is ${result ? "TRUE" : "FALSE"}.`
+    };
+  }
+
+  if (stage === 2) {
+    const accessLevel = Math.floor(Math.random() * 5) + 1;
+    const systemLocked = Math.random() < 0.5;
+    const result = accessLevel >= 3 && systemLocked === false;
+
+    return {
+      stage,
+      title: "Access control",
+      condition: `access_level >= 3 and system_locked == False`,
+      variables: [
+        `access_level = ${accessLevel}`,
+        `system_locked = ${systemLocked ? "True" : "False"}`
+      ],
+      correct: result ? "north" : "south",
+      explanation: `Access only succeeds if level is 3 or higher AND the system is not locked.`
+    };
+  }
+
+  const signalStable = Math.random() < 0.5;
+  const overrideActive = Math.random() < 0.5;
+  const corruptionLevel = Math.floor(Math.random() * 100);
+  const result = (signalStable || overrideActive) && corruptionLevel < 60;
+
+  return {
+    stage,
+    title: "Nested system condition",
+    condition: `(signal_stable or override_active) and corruption_level < 60`,
+    variables: [
+      `signal_stable = ${signalStable ? "True" : "False"}`,
+      `override_active = ${overrideActive ? "True" : "False"}`,
+      `corruption_level = ${corruptionLevel}`
+    ],
+    correct: result ? "north" : "south",
+    explanation: `The first part needs either signal_stable OR override_active to be true, and corruption_level must be below 60.`
   };
 }
 
@@ -2708,6 +2781,20 @@ console.log(score);`,
     // ── LOOK ──────────────────
     } else if (raw === "look") {
       let diagram = "";
+
+      // IF/ELSE ROOM
+      if (room === "ifelse" && ifPuzzle) {
+        return addLine(currentRoom.desc, "system")
+          .then(() => addLine(`> IF / ELSE STAGE ${ifStage}/3`, "system"))
+          .then(() => addLine(`> ${ifPuzzle.title.toUpperCase()}`, "system"))
+          .then(() => addLine(`> ${ifPuzzle.title.toUpperCase()}`, "system"))
+          .then(() => addLine(ifPuzzle.variables.join("\n"), "system"))
+          .then(() => addLine("", "system"))
+          .then(() => addLine(`if ${ifPuzzle.condition}:`, "system"))
+          .then(() => addLine("    go north", "system"))
+          .then(() => addLine("else:", "system"))
+          .then(() => addLine("    go south", "system"));
+      }
 
       // LOGIC ROOM
       if (room === "logic" && logicPuzzle) {
@@ -2773,14 +2860,38 @@ console.log(score);`,
     } else if (raw.startsWith("go ")) {
       const dir = raw.replace("go ", "").trim();
 
-      if (dir === "south" && !ENABLE_DEBUG_ROOM) {
-        addLine("No path detected in that direction.", "error");
-        setScore((s) => Math.max(0, s - 10));
-        return;
-      }
+      // IF/ELSE ROOM COLVING
+      if (room === "ifelse" && ifPuzzle) {
+        if (dir === ifPuzzle.correct) {
+          return addLine("> EVALUATING CONDITION...", "system")
+            .then(() => new Promise(r => setTimeout(r, delay(400))))
+            .then(() => addLine("> PROCESSING...", "system"))
+            .then(() => new Promise(r => setTimeout(r, delay(400))))
+            .then(() => addLine("✅ CONDITION EVALUATED CORRECTLY", "success"))
+            .then(() => addLine(`> ${ifPuzzle.explanation}`, "system"))
+            .then(() => {
+              if (ifStage === 3) {
+                return handleRoomSuccess("ifelse", 3);
+              }
 
-      if (dir === "firewall" && binaryCode.length < 7) {
-        addLine("> ACCESS DENIED - INSUFFICIENT DATA", "error");
+              const nextStage = ifStage + 1;
+
+              setIfStage(nextStage);
+              setIfPuzzle(generateIfElsePuzzle(nextStage));
+
+              return addLine(`> IF / ELSE STAGE ${ifStage}/3 COMPLETE`, "system")
+                .then(() => new Promise(r => setTimeout(r, delay(500))))
+                .then(() => addLine(`> LOADING STAGE ${nextStage}/3`, "system"))
+                .then(() => addLine("> Type 'look' to inspect the new condition", "system"));
+            });
+        }
+
+        triggerGlitch(300);
+
+        addLine("❌ CONDITION FAILED", "error");
+        addLine("> PATH INVALID — LOGIC MISMATCH DETECTED", "system");
+        addLine("> RE-EVALUATE THE CONDITION", "system");
+        setScore(s => Math.max(0, s - 10));
         return;
       }
 
@@ -2838,6 +2949,21 @@ console.log(score);`,
             ...prev,
             [nextId]: true,
           }));
+
+          loadNewRoom(textToShow);
+
+        // IF/ELSE ROOM
+        } else if (nextId === "ifelse") {
+          const textToShow = getRoomText(nextId);
+
+          setVisitedRooms((prev) => ({
+            ...prev,
+            [nextId]: true,
+          }));
+
+          const puzzle = generateIfElsePuzzle(1);
+          setIfPuzzle(puzzle);
+          setIfStage(1);
 
           loadNewRoom(textToShow);
         
