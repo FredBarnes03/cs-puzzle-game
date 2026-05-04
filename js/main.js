@@ -130,37 +130,38 @@ const LEVELS = [
     color: "#7fff00",
     difficulty: "Hard",
   },
-]
-/*const LEVELS = [
+];
+
+// ── LEVEL 1 - BINARY TO DECIMAL QUESTIONS ───────────────
+const BINARY_QUESTIONS = [
   {
-    id: 1,
-    name: "If / Else",
-    icon: "🧠",
-    desc: "Fill in the missing condition to fix the code",
-    color: "orange",
-    difficulty: "Medium",
+    binary: "0011",
+    answer: 3,
+    explanation: "0011 = 0*8 + 0*4 + 1*2 + 1*1 = 3",
   },
   {
-    id: 2,
-    name: "Logic Gates",
-    icon: "⚡",
-    desc: "Pick the right gate so the output is 1",
-    color: "#ff006e",
-    difficulty: "Medium",
+    binary: "0101",
+    answer: 5,
+    explanation: "0101 = 0*8 + 1*4 + 0*2 + 1*1 = 5",
   },
   {
-    id: 4,
-    name: "Text Adventure",
-    icon: "🗺️",
-    desc: "Type commands to escape the maze",
-    color: "#7fff00",
-    difficulty: "Hard",
+    binary: "1010",
+    answer: 10,
+    explanation: "1010 = 1*8 + 0*4 + 1*2 + 0*1 = 10",
   },
-];*/
+  {
+    binary: "1111",
+    answer: 15,
+    explanation: "1111 = 1*8 + 1*4 + 1*2 + 1*1 = 15",
+  },
+  {
+    binary: "10010",
+    answer: 18,
+    explanation: "10010 = 1*16 + 0*8 + 0*4 + 1*2 + 0*1 = 18",
+  },
+];
 
-
-
-// ── LEVEL 1 – IF/ELSE QUESTIONS ───────────────
+// ── LEVEL 2 – IF/ELSE QUESTIONS ───────────────
 const IF_ELSE_QUESTIONS = [
   {
     context:
@@ -305,7 +306,7 @@ const IF_ELSE_QUESTIONS = [
   },
 ];
 
-// ── LEVEL 2 – LOGIC GATES ─────────────────────
+// ── LEVEL 3 – LOGIC GATES ─────────────────────
 // ── GATE DATA ─────────────────────────────────
 const GATE_DATA = [
   {
