@@ -1335,16 +1335,6 @@ else:
         <div className="game-title">Text Adventure</div>
         <div className="score-display">{score} pts</div>
       </div>
-      {/* <div className="progress-bar">
-        <div
-          className="progress-fill"
-          style={{
-            width: "60%",
-            background: "linear-gradient(90deg, #7fff00, #00f5ff)",
-          }}
-        />
-      </div> */}
-
       <div className="info-box">
         Escape the CS Dungeon! Type commands to navigate. Wrong commands cost
         points 💀
